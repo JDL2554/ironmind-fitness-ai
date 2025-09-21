@@ -1,35 +1,63 @@
 import React, { useState } from 'react';
 import './Auth.css';
+import { signUpApi } from './Auth';
+import { useNavigate } from 'react-router-dom';
 
 interface SignupProps {
-    onSignup: (userData: { experienceLevel: string; workoutVolume: string; name: string; weight: number; equipment: string; email: string; age: number; height: string; goals: string[] }) => void;
+    onSignup: (userData: {
+        email: string;
+        name: string;
+        age: number;
+        height: string;
+        weight: number;
+        experienceLevel: string;
+        workoutVolume: string;
+        goals: string[];
+        equipment: string;
+    }) => void;
     onSwitchToLogin: () => void;
 }
 
+// Keep form fields as strings for inputs; convert to numbers on submit.
+type FormState = {
+    // Step 1
+    name: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    // Step 2
+    age: string;
+    height: string; // combined like 5'9"
+    weight: string; // typed number input, but keep as string in state
+    // Step 3
+    experienceLevel: 'beginner' | 'intermediate' | 'advanced';
+    workoutVolume: '1-2' | '3-4' | '5-6' | '7';
+    goals: string[];
+    equipment: 'gym' | 'home_full' | 'home_basic' | 'bodyweight' | 'minimal';
+};
+
 const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
     const [currentStep, setCurrentStep] = useState(1);
-    const [formData, setFormData] = useState({
-        // Step 1: Account Info
+    const [formData, setFormData] = useState<FormState>({
         name: '',
         email: '',
         password: '',
         confirmPassword: '',
 
-        // Step 2: Physical Info
         age: '',
         height: '',
         weight: '',
 
-        // Step 3: Fitness Profile
         experienceLevel: 'beginner',
         workoutVolume: '3-4',
-        goals: [] as string[],
-        equipment: 'gym'
+        goals: [],
+        equipment: 'gym',
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [feet, setFeet] = useState("");
-    const [inches, setInches] = useState("");
+    // local-only inputs for height pieces
+    const [feet, setFeet] = useState('');
+    const [inches, setInches] = useState('');
 
     const goalOptions = [
         { id: 'strength', label: '💪 Gain Strength', description: 'Build muscle strength and power' },
@@ -37,35 +65,35 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
         { id: 'flexibility', label: '🤸 Increase Flexibility', description: 'Improve mobility and range of motion' },
         { id: 'stamina', label: '🏃 Gain Stamina', description: 'Build cardiovascular endurance' },
         { id: 'health', label: '❤️ Be Overall Healthier', description: 'Improve general health and wellness' },
-        { id: 'muscle', label: '🏋️ Build Muscle Mass', description: 'Increase muscle size and definition' }
+        { id: 'muscle', label: '🏋️ Build Muscle Mass', description: 'Increase muscle size and definition' },
     ];
 
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        setFormData((s) => ({ ...s, [e.target.name]: e.target.value }));
         if (error) setError('');
     };
 
     const handleGoalToggle = (goalId: string) => {
-        const currentGoals = [...formData.goals];
-        const index = currentGoals.indexOf(goalId);
-
-        if (index === -1) {
-            currentGoals.push(goalId);
-        } else {
-            currentGoals.splice(index, 1);
-        }
-
-        setFormData({ ...formData, goals: currentGoals });
+        setFormData((s) => {
+            const exists = s.goals.includes(goalId);
+            return { ...s, goals: exists ? s.goals.filter(g => g !== goalId) : [...s.goals, goalId] };
+        });
         if (error) setError('');
+    };
+
+    // Build a normalized height string like 5'9"
+    const setHeightFromParts = (f: string, i: string) => {
+        // clamp inches 0..11 to avoid 5'12"
+        const iNum = i === '' ? '' : String(Math.min(11, Math.max(0, Number(i))));
+        const val = f ? `${f}'${iNum === '' ? '0' : iNum}"` : '';
+        setFormData((s) => ({ ...s, height: val }));
     };
 
     const validateStep = (step: number) => {
         switch (step) {
-            case 1:
-                if (!formData.name || !formData.email || !formData.password) {
+            case 1: {
+                if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
                     return 'Please fill in all fields';
                 }
                 if (formData.password.length < 6) {
@@ -75,77 +103,97 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                     return 'Passwords do not match';
                 }
                 break;
-            case 2:
+            }
+            case 2: {
                 if (!formData.age || !formData.height || !formData.weight) {
                     return 'Please fill in all physical information';
                 }
-                if (parseInt(formData.age) < 13 || parseInt(formData.age) > 120) {
+                const ageNum = Number(formData.age);
+                if (!Number.isFinite(ageNum) || ageNum < 13 || ageNum > 120) {
                     return 'Please enter a valid age (13-120)';
                 }
-                if (!formData.height.match(/^\d+'?\d*"?$|^\d+\s*(cm|kg)$/i)) {
-                    return 'Please enter height in format: 5\'10" or 178cm';
+                const weightNum = Number(formData.weight);
+                if (!Number.isFinite(weightNum) || weightNum < 50 || weightNum > 500) {
+                    return 'Please enter a valid weight (50–500 lbs)';
+                }
+                // Height format like 5'9" where inches 0..11
+                if (!/^\d+'\d{1,2}"$/.test(formData.height)) {
+                    return 'Please enter height as feet & inches (e.g., 5\'9")';
+                }
+                const [fStr, iStr] = formData.height.split(/'|"/).filter(Boolean); // ["5","9"]
+                const fNum = Number(fStr), iNum = Number(iStr);
+                if (!(fNum >= 1 && fNum <= 8) || !(iNum >= 0 && iNum <= 11)) {
+                    return 'Height must be between 1–8 ft and 0–11 in';
                 }
                 break;
-            case 3:
+            }
+            case 3: {
                 if (formData.goals.length === 0) {
                     return 'Please select at least one fitness goal';
                 }
                 break;
+            }
         }
         return null;
     };
 
-    const handleNext = () => {
-        const validationError = validateStep(currentStep);
-        if (validationError) {
-            setError(validationError);
-            return;
-        }
-        setError('');
-        setCurrentStep(currentStep + 1);
-    };
-
-    const handleBack = () => {
-        setError('');
-        setCurrentStep(currentStep - 1);
-    };
-
     const handleSubmit = async () => {
         const validationError = validateStep(3);
-        if (validationError) {
-            setError(validationError);
-            return;
-        }
+        if (validationError) return setError(validationError);
 
         setLoading(true);
         setError('');
-
         try {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            const userData = {
+            await signUpApi({
                 email: formData.email,
                 name: formData.name,
-                age: parseInt(formData.age),
+                password: formData.password, // send to backend
+                age: Number(formData.age),
                 height: formData.height,
-                weight: parseFloat(formData.weight), // Convert string to number
+                weight: Number(formData.weight),
                 experienceLevel: formData.experienceLevel,
                 workoutVolume: formData.workoutVolume,
                 goals: formData.goals,
-                equipment: formData.equipment
-            };
+                equipment: formData.equipment,
+            });
 
-            onSignup(userData);
-        } catch (err) {
-            setError('Signup failed. Please try again.');
+            // OPTIONAL: notify parent without password (matches your prop type)
+            onSignup({
+                email: formData.email,
+                name: formData.name,
+                age: Number(formData.age),
+                height: formData.height,
+                weight: Number(formData.weight),
+                experienceLevel: formData.experienceLevel,
+                workoutVolume: formData.workoutVolume,
+                goals: formData.goals,
+                equipment: formData.equipment,
+            });
+
+            // navigate anywhere you want (home/dashboard)
+            navigate('/'); // e.g., to dashboard
+        } catch (e: any) {
+            setError(e?.message || 'Signup failed. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
+    const handleNext = () => {
+        const validationError = validateStep(currentStep);
+        if (validationError) return setError(validationError);
+        setError('');
+        setCurrentStep((s) => s + 1);
+    };
+
+    const handleBack = () => {
+        setError('');
+        setCurrentStep((s) => s - 1);
+    };
+
     const renderStepIndicator = () => (
         <div className="step-indicator">
-            {[1, 2, 3].map(step => (
+            {[1, 2, 3].map((step) => (
                 <div
                     key={step}
                     className={`step ${step <= currentStep ? 'active' : ''} ${step < currentStep ? 'completed' : ''}`}
@@ -239,8 +287,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                         value={formData.age}
                         onChange={handleInputChange}
                         placeholder="25"
-                        min="13"
-                        max="120"
+                        min={13}
+                        max={120}
                         className="form-input"
                         disabled={loading}
                     />
@@ -255,8 +303,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                         value={formData.weight}
                         onChange={handleInputChange}
                         placeholder="150"
-                        min="50"
-                        max="500"
+                        min={50}
+                        max={500}
                         step="0.1"
                         className="form-input"
                         disabled={loading}
@@ -265,8 +313,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             </div>
 
             <div className="form-group">
-                <label htmlFor="height">Height</label>
-                <div style={{ display: "flex", gap: "10px" }}>
+                <label>Height</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
                     <input
                         type="number"
                         id="height-feet"
@@ -274,14 +322,11 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                         onChange={(e) => {
                             const f = e.target.value;
                             setFeet(f);
-                            setFormData({
-                                ...formData,
-                                height: f && inches ? `${f}'${inches}"` : f ? `${f}'` : ""
-                            });
+                            setHeightFromParts(f, inches);
                         }}
                         placeholder="Feet"
-                        min="1"
-                        max="8"
+                        min={1}
+                        max={8}
                         className="form-input"
                         disabled={loading}
                     />
@@ -292,18 +337,18 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                         onChange={(e) => {
                             const i = e.target.value;
                             setInches(i);
-                            setFormData({
-                                ...formData,
-                                height: feet && i ? `${feet}'${i}"` : feet ? `${feet}'` : ""
-                            });
+                            setHeightFromParts(feet, i);
                         }}
                         placeholder="Inches"
-                        min="0"
-                        max="11"
+                        min={0}
+                        max={11}
                         className="form-input"
                         disabled={loading}
                     />
                 </div>
+                <small style={{ color: 'rgba(255,255,255,0.6)' }}>
+                    Saved as: {formData.height || '—'}
+                </small>
             </div>
         </div>
     );
@@ -347,27 +392,9 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             </div>
 
             <div className="form-group">
-                <label htmlFor="equipment">Equipment Access</label>
-                <select
-                    id="equipment"
-                    name="equipment"
-                    value={formData.equipment}
-                    onChange={handleInputChange}
-                    className="form-input"
-                    disabled={loading}
-                >
-                    <option value="gym">🏢 Full Gym Access</option>
-                    <option value="home_full">🏠 Home Gym (Full Equipment)</option>
-                    <option value="home_basic">🏠 Home Gym (Basic Equipment)</option>
-                    <option value="bodyweight">💪 Bodyweight Only</option>
-                    <option value="minimal">🎒 Minimal Equipment (Resistance Bands, Dumbbells)</option>
-                </select>
-            </div>
-
-            <div className="form-group">
                 <label>Fitness Goals (Select all that apply)</label>
                 <div className="goals-grid">
-                    {goalOptions.map(goal => (
+                    {goalOptions.map((goal) => (
                         <div
                             key={goal.id}
                             className={`goal-option ${formData.goals.includes(goal.id) ? 'selected' : ''}`}
@@ -390,65 +417,39 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
     return (
         <div className="auth-container">
             <div className="auth-card signup-card">
-                {/* Logo */}
                 <div className="auth-logo">
-                    <img
-                        src="/IronMindLogoWithoutText.png"
-                        alt="IronMind Logo"
-                        className="auth-logo-image"
-                    />
+                    <img src="/IronMindLogoWithoutText.png" alt="IronMind Logo" className="auth-logo-image" />
                     <div className="auth-logo-fallback" style={{ display: 'none' }}>
                         <div className="logo-text">🧠 IronMind</div>
                     </div>
                 </div>
 
-                {/* Step Indicator */}
                 {renderStepIndicator()}
 
-                {/* Header */}
                 <div className="auth-header">
                     <h2>Join IronMind</h2>
                     <p>Step {currentStep} of 3 - Create your personalized fitness profile</p>
                 </div>
 
-                {/* Error Message */}
-                {error && (
-                    <div className="error-message">
-                        ⚠️ {error}
-                    </div>
-                )}
+                {error && <div className="error-message">⚠️ {error}</div>}
 
-                {/* Step Content */}
                 {currentStep === 1 && renderStep1()}
                 {currentStep === 2 && renderStep2()}
                 {currentStep === 3 && renderStep3()}
 
-                {/* Navigation Buttons */}
                 <div className="form-navigation">
                     {currentStep > 1 && (
-                        <button
-                            onClick={handleBack}
-                            className="auth-button secondary"
-                            disabled={loading}
-                        >
+                        <button onClick={handleBack} className="auth-button secondary" disabled={loading}>
                             ← Back
                         </button>
                     )}
 
                     {currentStep < 3 ? (
-                        <button
-                            onClick={handleNext}
-                            className="auth-button primary"
-                            disabled={loading}
-                        >
+                        <button onClick={handleNext} className="auth-button primary" disabled={loading}>
                             Next →
                         </button>
                     ) : (
-                        <button
-                            onClick={handleSubmit}
-                            className="auth-button primary"
-                            disabled={loading}
-                        >
+                        <button onClick={handleSubmit} className="auth-button primary" disabled={loading}>
                             {loading ? (
                                 <div className="button-loading">
                                     <div className="spinner-small"></div>
@@ -461,22 +462,16 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                     )}
                 </div>
 
-                {/* Switch to Login */}
                 <div className="auth-footer">
                     <p>
                         Already have an account?{' '}
-                        <button
-                            onClick={onSwitchToLogin}
-                            className="auth-link"
-                            disabled={loading}
-                        >
+                        <button onClick={onSwitchToLogin} className="auth-link" disabled={loading}>
                             Sign In
                         </button>
                     </p>
                 </div>
             </div>
 
-            {/* Background Elements */}
             <div className="auth-background">
                 <div className="floating-element element-1">💪</div>
                 <div className="floating-element element-2">🧠</div>
@@ -485,6 +480,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             </div>
         </div>
     );
+    const navigate = useNavigate();
+
 };
 
 export default Signup;
