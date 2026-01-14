@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import './Auth.css';
 import { signUpApi } from './Auth';
-import { useNavigate } from 'react-router-dom';
 
 interface SignupProps {
     onSignup: (userData: {
@@ -170,8 +169,6 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                 equipment: formData.equipment,
             });
 
-            // navigate anywhere you want (home/dashboard)
-            navigate('/'); // e.g., to dashboard
         } catch (e: any) {
             setError(e?.message || 'Signup failed. Please try again.');
         } finally {
@@ -480,7 +477,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             </div>
         </div>
     );
-    const navigate = useNavigate();
+
 
 };
 

@@ -39,20 +39,10 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onAuthenticated }) => {
     const switchToLogin = () => setCurrentView('login');
     const switchToSignup = () => setCurrentView('signup');
 
-    return (
-        <>
-            {currentView === 'login' ? (
-                <Login
-                    onLogin={handleLogin}
-                    onSwitchToSignup={switchToSignup}
-                />
-            ) : (
-                <Signup
-                    onSignup={handleSignup}
-                    onSwitchToLogin={switchToLogin}
-                />
-            )}
-        </>
+    return currentView === "login" ? (
+        <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
+    ) : (
+        <Signup onSignup={handleSignup} onSwitchToLogin={switchToLogin} />
     );
 };
 

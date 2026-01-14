@@ -1,10 +1,27 @@
-export async function signUpApi(payload: any) {
-    const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+export async function signUpApi(payload: {
+    email: string;
+    name: string;
+    password: string;
+    age: number;
+    height: string;
+    weight: number;
+    experienceLevel: string;
+    workoutVolume: string;
+    goals: string[];
+    equipment: string;
+}) {
+    const res = await fetch("http://localhost:8000/signup", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(await res.text());
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.detail || "Signup failed");
+    }
+
     return res.json();
 }
