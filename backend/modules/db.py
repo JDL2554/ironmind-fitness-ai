@@ -1,32 +1,32 @@
 # db.py
-import sqlite3
-from pathlib import Path
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+load_dotenv()
 
-DB_PATH = Path(__file__).with_name("ironmind.db")
+def get_conn():
+    return psycopg2.connect(os.environ["DATABASE_URL"])
 
-def get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def init_db() -> None:
+def init_db():
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        age INTEGER NOT NULL,
-        height TEXT NOT NULL,
-        weight REAL NOT NULL,
-        experience_level TEXT NOT NULL,
-        workout_volume TEXT NOT NULL,
-        goals TEXT NOT NULL,
-        equipment TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      age INT NOT NULL,
+      height TEXT NOT NULL,
+      weight DOUBLE PRECISION NOT NULL,
+      experience_level TEXT NOT NULL,
+      workout_volume TEXT NOT NULL,
+      goals JSONB NOT NULL,
+      equipment TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     """)
     conn.commit()
+    cur.close()
     conn.close()

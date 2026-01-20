@@ -4,8 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 import json
 import bcrypt
+import psycopg2
 
-from db import get_conn, init_db
+from .db import get_conn, init_db
 
 app = FastAPI(title="IronMind API")
 
@@ -61,27 +62,29 @@ def signup(payload: SignupRequest):
             INSERT INTO users (
                 email, name, password_hash, age, height, weight,
                 experience_level, workout_volume, goals, equipment
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s)
+            RETURNING id
         """, (
-            payload.email.lower().strip(),
-            payload.name.strip(),
-            pw_hash,
-            payload.age,
-            payload.height,
-            payload.weight,
-            payload.experienceLevel,
-            payload.workoutVolume,
-            json.dumps(payload.goals),
-            payload.equipment
-        ))
+                payload.email.lower().strip(),
+                payload.name.strip(),
+                pw_hash,
+                payload.age,
+                payload.height,
+                payload.weight,
+                payload.experienceLevel,
+                payload.workoutVolume,
+                json.dumps(payload.goals),
+                payload.equipment
+            ))
+        user_id = cur.fetchone()[0]
         conn.commit()
-        user_id = cur.lastrowid
-    except Exception as e:
+
+    except psycopg2.Error as e:
         conn.rollback()
-        # Most common issue: duplicate email
-        if "UNIQUE constraint failed: users.email" in str(e):
+        if e.pgcode == "23505":
             raise HTTPException(status_code=409, detail="Email already registered")
-        raise HTTPException(status_code=500, detail="Could not create user")
+        raise HTTPException(status_code=500, detail="Database error")
+
     finally:
         conn.close()
 

@@ -10,6 +10,18 @@ CORS(app)
 exercises_data = []
 muscle_groups_data = []
 
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
+app = Flask(__name__)
+CORS(app)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
 def extract_muscle_groups_from_exercises():
     """Extract unique muscle groups from the exercises data"""
     muscle_groups = set()
@@ -32,7 +44,10 @@ def load_exercise_data():
 
     try:
         # Load main exercises
-        with open('data/exercises.json', 'r') as f:
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        DATA_PATH = os.path.join(BASE_DIR, 'data', 'exercises.json')
+
+        with open(DATA_PATH, 'r') as f:
             exercises_data = json.load(f)
 
         print(f"✅ Loaded {len(exercises_data)} exercises successfully!")
@@ -243,6 +258,6 @@ if __name__ == '__main__':
         print("   - GET /api/exercises/by-muscle/quadriceps")
         print("   - GET /api/exercises/random?count=5")
         print("   - GET /api/exercises/stats")
-        app.run(debug=True, port=5000, host='127.0.0.1')
+        app.run(debug=True, port=5000, host='0.0.0.0')
     else:
         print("❌ Failed to load exercise data. Please check your JSON files in backend/data/")
