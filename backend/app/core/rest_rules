@@ -1,0 +1,8 @@
+REST_RULES = {
+    "full_body": "between_sessions",
+    "fb_eod": "every_other_day",
+    "upper_lower": "after_lower",
+    "ppl": "after_legs",
+    "arnold": "after_cycle",
+    "cbum": "as_needed"
+}

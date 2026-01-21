@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './Auth.css';
+import axios from "axios";
 
 interface LoginProps {
     onLogin: (userData: { email: string; name: string }) => void;
@@ -32,18 +33,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup }) => {
         setError('');
 
         try {
-            // Simulate API call - replace with actual authentication later
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            setError('');
 
-            // Mock successful login
-            const userData = {
+            const res = await axios.post("http://localhost:8000/api/login", {
                 email: formData.email,
-                name: formData.email.split('@')[0]
-            };
+                password: formData.password,
+            });
 
-            onLogin(userData);
-        } catch (err) {
-            setError('Login failed. Please try again.');
+            onLogin(res.data);
+        } catch (err: any) {
+            setError(err?.response?.data?.detail || "Invalid email or password");
         } finally {
             setLoading(false);
         }

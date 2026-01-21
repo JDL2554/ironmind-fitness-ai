@@ -1,23 +1,12 @@
-# signup.py
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 import json
 import bcrypt
 import psycopg2
 
-from app.core.db import get_conn, init_db
+from app.core.db import get_conn
 
-app = FastAPI(title="IronMind API")
-
-# Allow React dev server to call your API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter()
 
 class SignupRequest(BaseModel):
     email: EmailStr
@@ -45,11 +34,7 @@ class SignupResponse(BaseModel):
     goals: list[str]
     equipment: str
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
-
-@app.post("/signup", response_model=SignupResponse)
+@router.post("/signup", response_model=SignupResponse)
 def signup(payload: SignupRequest):
     # Hash password (never store plaintext)
     pw_hash = bcrypt.hashpw(payload.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
