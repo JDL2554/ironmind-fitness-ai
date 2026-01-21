@@ -10,7 +10,7 @@ export async function signUpApi(payload: {
     goals: string[];
     equipment: string;
 }) {
-    const res = await fetch("http://localhost:8000/signup", {
+    const res = await fetch("http://localhost:8000/api/signup", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
