@@ -7,7 +7,7 @@ from app.services.exercise_store import load_exercise_data
 from app.routes.exercises import router as exercises_router
 from app.routes.auth import router as auth_router
 from app.modules.login import router as login_router
-from app.modules.signup import router as signup_router
+#from app.modules.signup import router as signup_router
 
 app = FastAPI(title="IronMind API")
 
@@ -27,7 +27,7 @@ def startup():
 app.include_router(exercises_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(login_router, prefix="/api")
-app.include_router(signup_router, prefix="/api")
+#app.include_router(signup_router, prefix="/api")
 
 @app.get("/api/health")
 def health():

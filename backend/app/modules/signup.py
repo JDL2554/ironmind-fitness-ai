@@ -1,3 +1,4 @@
+"""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 import json
@@ -34,6 +35,7 @@ class SignupResponse(BaseModel):
     goals: list[str]
     equipment: str
 
+
 @router.post("/signup", response_model=SignupResponse)
 def signup(payload: SignupRequest):
     # Hash password (never store plaintext)
@@ -43,13 +45,17 @@ def signup(payload: SignupRequest):
     cur = conn.cursor()
 
     try:
-        cur.execute("""
+        cur.execute(
+"""
+"""
             INSERT INTO users (
                 email, name, password_hash, age, height, weight,
                 experience_level, workout_volume, goals, equipment
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s)
             RETURNING id
-        """, (
+"""
+"""
+            , (
                 payload.email.lower().strip(),
                 payload.name.strip(),
                 pw_hash,
@@ -85,3 +91,5 @@ def signup(payload: SignupRequest):
         goals=payload.goals,
         equipment=payload.equipment,
     )
+
+"""

@@ -20,7 +20,7 @@ class SignupRequest(BaseModel):
     goals: list[str] = Field(min_length=1)
     equipment: str
 
-@router.post("/signup")
+@router.post("/auth/signup")
 def signup(payload: SignupRequest):
     pw_hash = bcrypt.hashpw(payload.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
@@ -54,4 +54,15 @@ def signup(payload: SignupRequest):
         conn.rollback()
         raise HTTPException(status_code=409, detail="Email already registered")
     finally:
+        conn.close()
+
+@router.get("/auth/email-exists")
+def email_exists(email: EmailStr):
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT 1 FROM users WHERE email = %s", (email.lower().strip(),))
+        return {"exists": cur.fetchone() is not None}
+    finally:
+        cur.close()
         conn.close()

@@ -29,13 +29,13 @@ def login(payload: LoginRequest):
         if not row:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        # ✅ Use dict-style access (works for DictRow/RealDictRow)
+        # Use dict-style access (works for DictRow/RealDictRow)
         user_id = row["id"]
         email = row["email"]
         name = row["name"]
         password_hash = row["password_hash"]
 
-        # ✅ Normalize hash to bytes safely
+        # Normalize hash to bytes safely
         if isinstance(password_hash, memoryview):
             password_hash = password_hash.tobytes()
         if isinstance(password_hash, str):

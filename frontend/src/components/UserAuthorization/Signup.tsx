@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './Auth.css';
-import { signUpApi } from './Auth';
+import { signUpApi, emailExistsApi  } from './Auth';
 
 interface SignupProps {
     onSignup: (userData: {
@@ -176,10 +176,28 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
         }
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         const validationError = validateStep(currentStep);
         if (validationError) return setError(validationError);
-        setError('');
+
+        if (currentStep === 1) {
+            setLoading(true);
+            setError("");
+            try {
+                const exists = await emailExistsApi(formData.email);
+                if (exists) {
+                    setError("An account with this email already exists.");
+                    return; // stop here (don’t go to step 2)
+                }
+            } catch {
+                setError("Could not verify email right now. Please try again.");
+                return;
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        setError("");
         setCurrentStep((s) => s + 1);
     };
 

@@ -1,3 +1,5 @@
+const API_BASE = "http://localhost:8000/api";
+
 export async function signUpApi(payload: {
     email: string;
     name: string;
@@ -10,11 +12,9 @@ export async function signUpApi(payload: {
     goals: string[];
     equipment: string;
 }) {
-    const res = await fetch("http://localhost:8000/api/signup", {
+    const res = await fetch(`${API_BASE}/auth/signup`, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
     });
 
@@ -24,4 +24,19 @@ export async function signUpApi(payload: {
     }
 
     return res.json();
+}
+
+export async function emailExistsApi(email: string): Promise<boolean> {
+    const url = new URL(`${API_BASE}/auth/email-exists`);
+    url.searchParams.set("email", email);
+
+    const res = await fetch(url.toString(), { method: "GET" });
+
+    if (!res.ok) {
+        // if backend is down etc.
+        throw new Error("Email check failed");
+    }
+
+    const data = await res.json().catch(() => ({}));
+    return !!data?.exists;
 }
