@@ -37,7 +37,7 @@ api.interceptors.response.use(
         // Handle specific error cases
         if (error.code === 'ECONNREFUSED') {
             console.error('🔌 Backend server is not running! Start with: python app.py');
-            throw new Error('Backend server is not running. Please start your Flask server.');
+            throw new Error('Backend server is not running. Please start your FastAPI server.');
         }
 
         if (error.response) {

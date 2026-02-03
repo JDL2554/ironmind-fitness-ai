@@ -11,18 +11,25 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ironmind -d ironmind_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: ironmind-backend
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://ironmind:ironmind_pw@db:5432/ironmind_db
-      FLASK_ENV: development
     ports:
-      - "5432:5432"
+      - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:

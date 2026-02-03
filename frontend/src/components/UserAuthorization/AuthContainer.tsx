@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
-import Login from './Login';
-import Signup from './Signup';
+import React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+
+import Login from "../../pages/Login";
+import Signup from "../../pages/Signup";
 
 interface AuthContainerProps {
     onAuthenticated: (userData: { email: string; name: string; experienceLevel?: string }) => void;
 }
 
 const AuthContainer: React.FC<AuthContainerProps> = ({ onAuthenticated }) => {
-    const [currentView, setCurrentView] = useState<'login' | 'signup'>('login');
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    const isSignup = location.pathname === "/signup";
 
     const handleLogin = (userData: { email: string; name: string }) => {
-        console.log('User logged in:', userData);
+        console.log("User logged in:", userData);
         onAuthenticated(userData);
     };
 
@@ -25,24 +30,24 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onAuthenticated }) => {
         goals: string[];
         equipment: string;
     }) => {
-        console.log('User signed up with full profile:', userData);
-        // Convert to format expected by main app
+        console.log("User signed up with full profile:", userData);
+
         const basicUserData = {
             email: userData.email,
             name: userData.name,
             experienceLevel: userData.experienceLevel,
-            userProfile: userData // Store full profile for later use
         };
+
         onAuthenticated(basicUserData);
     };
 
-    const switchToLogin = () => setCurrentView('login');
-    const switchToSignup = () => setCurrentView('signup');
+    const switchToLogin = () => navigate("/login", { replace: true });
+    const switchToSignup = () => navigate("/signup", { replace: true });
 
-    return currentView === "login" ? (
-        <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
-    ) : (
+    return isSignup ? (
         <Signup onSignup={handleSignup} onSwitchToLogin={switchToLogin} />
+    ) : (
+        <Login onLogin={handleLogin} onSwitchToSignup={switchToSignup} />
     );
 };
 
