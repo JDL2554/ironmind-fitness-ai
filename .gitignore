@@ -84,7 +84,5 @@ Desktop.ini
 tmp/
 temp/
 
-# Webpack/Babel cache
-node_modules/.cache/
-frontend/node_modules/.cache/
-**/node_modules/.cache/
+# Node / React
+node_modules/
