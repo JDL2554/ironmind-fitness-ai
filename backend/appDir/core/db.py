@@ -48,5 +48,10 @@ def init_db():
     );
     """)
 
+    cur.execute("""
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
+    """)
+
     conn.commit()
     conn.close()

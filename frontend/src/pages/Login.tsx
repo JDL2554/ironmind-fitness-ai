@@ -1,48 +1,36 @@
-import React, { useState } from 'react';
-import '../components/UserAuthorization/Auth.css';
-import axios from "axios";
+// src/pages/Login.tsx
+import React, { useState } from "react";
+import "../components/UserAuthorization/Auth.css";
+import { loginApi, User } from "../services/api";
 
 interface LoginProps {
-    onLogin: (userData: { email: string; name: string }) => void;
+    onLogin: (userData: User) => void;
     onSwitchToSignup: () => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup }) => {
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
+    const [formData, setFormData] = useState({ email: "", password: "" });
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [error, setError] = useState("");
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-        if (error) setError('');
+        setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        if (error) setError("");
     };
 
     const handleSubmit = async () => {
         if (!formData.email || !formData.password) {
-            setError('Please fill in all fields');
+            setError("Please fill in all fields");
             return;
         }
 
         setLoading(true);
-        setError('');
-
+        setError("");
         try {
-            setError('');
-
-            const res = await axios.post("http://localhost:8000/api/login", {
-                email: formData.email,
-                password: formData.password,
-            });
-
-            onLogin(res.data);
+            const user = await loginApi(formData.email, formData.password);
+            onLogin(user);
         } catch (err: any) {
-            setError(err?.response?.data?.detail || "Invalid email or password");
+            setError(err?.message || "Invalid email or password");
         } finally {
             setLoading(false);
         }
@@ -51,39 +39,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup }) => {
     return (
         <div className="auth-container">
             <div className="auth-card">
-                {/* Logo */}
                 <div className="auth-logo">
                     <img
                         src="/IronMindLogoWithoutText.png"
                         alt="IronMind Logo"
                         className="auth-logo-image"
                         onError={(e) => {
-                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.style.display = "none";
                             const fallback = e.currentTarget.nextElementSibling;
-                            if (fallback) {
-                                (fallback as HTMLElement).style.display = 'block';
-                            }
+                            if (fallback) (fallback as HTMLElement).style.display = "block";
                         }}
                     />
-                    <div className="auth-logo-fallback" style={{ display: 'none' }}>
+                    <div className="auth-logo-fallback" style={{ display: "none" }}>
                         <div className="logo-text">🧠 IronMind</div>
                     </div>
                 </div>
 
-                {/* Header */}
                 <div className="auth-header">
                     <h2>Welcome Back</h2>
                     <p>Sign in to continue your fitness journey</p>
                 </div>
 
-                {/* Error Message */}
-                {error && (
-                    <div className="error-message">
-                        ⚠️ {error}
-                    </div>
-                )}
+                {error && <div className="error-message">⚠️ {error}</div>}
 
-                {/* Login Form */}
                 <div className="auth-form">
                     <div className="form-group">
                         <label htmlFor="email">Email</label>
@@ -96,6 +74,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup }) => {
                             placeholder="Enter your email"
                             className="form-input"
                             disabled={loading}
+                            autoComplete="email"
                         />
                     </div>
 
@@ -110,56 +89,33 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup }) => {
                             placeholder="Enter your password"
                             className="form-input"
                             disabled={loading}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+                            autoComplete="current-password"
+                            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                         />
                     </div>
 
-                    <button
-                        onClick={handleSubmit}
-                        className="auth-button primary"
-                        disabled={loading}
-                    >
+                    <button onClick={handleSubmit} className="auth-button primary" disabled={loading}>
                         {loading ? (
                             <div className="button-loading">
                                 <div className="spinner-small"></div>
                                 Signing In...
                             </div>
                         ) : (
-                            'Sign In'
+                            "Sign In"
                         )}
                     </button>
                 </div>
 
-                {/* Divider */}
-                <div className="auth-divider">
-                    <span>or</span>
-                </div>
-
-                {/* Demo Login */}
-                <button
-                    onClick={() => onLogin({ email: 'demo@ironmind.ai', name: 'Demo User' })}
-                    className="auth-button demo"
-                    disabled={loading}
-                >
-                    🎯 Try Demo Account
-                </button>
-
-                {/* Switch to Signup */}
                 <div className="auth-footer">
                     <p>
-                        Don't have an account?{' '}
-                        <button
-                            onClick={onSwitchToSignup}
-                            className="auth-link"
-                            disabled={loading}
-                        >
+                        Don&apos;t have an account?{" "}
+                        <button onClick={onSwitchToSignup} className="auth-link" disabled={loading}>
                             Sign Up
                         </button>
                     </p>
                 </div>
             </div>
 
-            {/* Background Elements */}
             <div className="auth-background">
                 <div className="floating-element element-1">💪</div>
                 <div className="floating-element element-2">🧠</div>

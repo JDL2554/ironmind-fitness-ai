@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import Login from "../../pages/Login";
 import Signup from "../../pages/Signup";
+import type { User } from "../../services/api";
 
 interface AuthContainerProps {
-    onAuthenticated: (userData: { email: string; name: string; experienceLevel?: string }) => void;
+    onAuthenticated: (userData: User) => void;
 }
 
 const AuthContainer: React.FC<AuthContainerProps> = ({ onAuthenticated }) => {
@@ -14,31 +15,14 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onAuthenticated }) => {
 
     const isSignup = location.pathname === "/signup";
 
-    const handleLogin = (userData: { email: string; name: string }) => {
+    const handleLogin = (userData: User) => {
         console.log("User logged in:", userData);
         onAuthenticated(userData);
     };
 
-    const handleSignup = (userData: {
-        email: string;
-        name: string;
-        age: number;
-        height: string;
-        weight: number;
-        experienceLevel: string;
-        workoutVolume: string;
-        goals: string[];
-        equipment: string;
-    }) => {
-        console.log("User signed up with full profile:", userData);
-
-        const basicUserData = {
-            email: userData.email,
-            name: userData.name,
-            experienceLevel: userData.experienceLevel,
-        };
-
-        onAuthenticated(basicUserData);
+    const handleSignup = (userData: User) => {
+        console.log("User signed up:", userData);
+        onAuthenticated(userData);
     };
 
     const switchToLogin = () => navigate("/login", { replace: true });

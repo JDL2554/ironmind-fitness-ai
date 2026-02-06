@@ -1,91 +1,76 @@
-import React, { useState } from 'react';
-import '../components/UserAuthorization/Auth.css';
-import { signUpApi, emailExistsApi  } from '../services/Auth';
+// src/pages/Signup.tsx
+import React, { useState } from "react";
+import "../components/UserAuthorization/Auth.css";
+import { signUpApi, emailExistsApi, User, SignupPayload } from "../services/api";
 
 interface SignupProps {
-    onSignup: (userData: {
-        email: string;
-        name: string;
-        age: number;
-        height: string;
-        weight: number;
-        experienceLevel: string;
-        workoutVolume: string;
-        goals: string[];
-        equipment: string;
-    }) => void;
+    onSignup: (user: User) => void;   // ✅ now returns id/email/name
     onSwitchToLogin: () => void;
 }
 
-// Keep form fields as strings for inputs; convert to numbers on submit.
 type FormState = {
-    // Step 1
     name: string;
     email: string;
     password: string;
     confirmPassword: string;
-    // Step 2
+
     age: string;
-    height: string; // combined like 5'9"
-    weight: string; // typed number input, but keep as string in state
-    // Step 3
-    experienceLevel: 'beginner' | 'intermediate' | 'advanced';
-    workoutVolume: '1-2' | '3-4' | '5-6' | '7';
+    height: string;
+    weight: string;
+
+    experienceLevel: "beginner" | "intermediate" | "advanced";
+    workoutVolume: "1-2" | "3-4" | "5-6" | "7";
     goals: string[];
-    equipment: 'gym' | 'home_full' | 'home_basic' | 'bodyweight' | 'minimal';
+    equipment: "gym" | "home_full" | "home_basic" | "bodyweight" | "minimal";
 };
 
 const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<FormState>({
-        name: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-
-        age: '',
-        height: '',
-        weight: '',
-
-        experienceLevel: 'beginner',
-        workoutVolume: '3-4',
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        age: "",
+        height: "",
+        weight: "",
+        experienceLevel: "beginner",
+        workoutVolume: "3-4",
         goals: [],
-        equipment: 'gym',
+        equipment: "gym",
     });
+
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    // local-only inputs for height pieces
-    const [feet, setFeet] = useState('');
-    const [inches, setInches] = useState('');
+    const [error, setError] = useState("");
+
+    const [feet, setFeet] = useState("");
+    const [inches, setInches] = useState("");
 
     const goalOptions = [
-        { id: 'strength', label: '💪 Gain Strength', description: 'Build muscle strength and power' },
-        { id: 'weight_loss', label: '🔥 Lose Weight', description: 'Burn fat and lose body weight' },
-        { id: 'flexibility', label: '🤸 Increase Flexibility', description: 'Improve mobility and range of motion' },
-        { id: 'stamina', label: '🏃 Gain Stamina', description: 'Build cardiovascular endurance' },
-        { id: 'health', label: '❤️ Be Overall Healthier', description: 'Improve general health and wellness' },
-        { id: 'muscle', label: '🏋️ Build Muscle Mass', description: 'Increase muscle size and definition' },
+        { id: "strength", label: "💪 Gain Strength", description: "Build muscle strength and power" },
+        { id: "weight_loss", label: "🔥 Lose Weight", description: "Burn fat and lose body weight" },
+        { id: "flexibility", label: "🤸 Increase Flexibility", description: "Improve mobility and range of motion" },
+        { id: "stamina", label: "🏃 Gain Stamina", description: "Build cardiovascular endurance" },
+        { id: "health", label: "❤️ Be Overall Healthier", description: "Improve general health and wellness" },
+        { id: "muscle", label: "🏋️ Build Muscle Mass", description: "Increase muscle size and definition" },
     ];
-
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData((s) => ({ ...s, [e.target.name]: e.target.value }));
-        if (error) setError('');
+        if (error) setError("");
     };
 
     const handleGoalToggle = (goalId: string) => {
         setFormData((s) => {
             const exists = s.goals.includes(goalId);
-            return { ...s, goals: exists ? s.goals.filter(g => g !== goalId) : [...s.goals, goalId] };
+            return { ...s, goals: exists ? s.goals.filter((g) => g !== goalId) : [...s.goals, goalId] };
         });
-        if (error) setError('');
+        if (error) setError("");
     };
 
-    // Build a normalized height string like 5'9"
     const setHeightFromParts = (f: string, i: string) => {
-        // clamp inches 0..11 to avoid 5'12"
-        const iNum = i === '' ? '' : String(Math.min(11, Math.max(0, Number(i))));
-        const val = f ? `${f}'${iNum === '' ? '0' : iNum}"` : '';
+        const iNum = i === "" ? "" : String(Math.min(11, Math.max(0, Number(i))));
+        const val = f ? `${f}'${iNum === "" ? "0" : iNum}"` : "";
         setFormData((s) => ({ ...s, height: val }));
     };
 
@@ -93,87 +78,32 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
         switch (step) {
             case 1: {
                 if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-                    return 'Please fill in all fields';
+                    return "Please fill in all fields";
                 }
-                if (formData.password.length < 6) {
-                    return 'Password must be at least 6 characters';
-                }
-                if (formData.password !== formData.confirmPassword) {
-                    return 'Passwords do not match';
-                }
+                if (formData.password.length < 6) return "Password must be at least 6 characters";
+                if (formData.password !== formData.confirmPassword) return "Passwords do not match";
                 break;
             }
             case 2: {
-                if (!formData.age || !formData.height || !formData.weight) {
-                    return 'Please fill in all physical information';
-                }
+                if (!formData.age || !formData.height || !formData.weight) return "Please fill in all physical information";
                 const ageNum = Number(formData.age);
-                if (!Number.isFinite(ageNum) || ageNum < 13 || ageNum > 120) {
-                    return 'Please enter a valid age (13-120)';
-                }
+                if (!Number.isFinite(ageNum) || ageNum < 13 || ageNum > 120) return "Please enter a valid age (13-120)";
                 const weightNum = Number(formData.weight);
-                if (!Number.isFinite(weightNum) || weightNum < 50 || weightNum > 500) {
-                    return 'Please enter a valid weight (50–500 lbs)';
-                }
-                // Height format like 5'9" where inches 0..11
-                if (!/^\d+'\d{1,2}"$/.test(formData.height)) {
-                    return 'Please enter height as feet & inches (e.g., 5\'9")';
-                }
-                const [fStr, iStr] = formData.height.split(/'|"/).filter(Boolean); // ["5","9"]
-                const fNum = Number(fStr), iNum = Number(iStr);
-                if (!(fNum >= 1 && fNum <= 8) || !(iNum >= 0 && iNum <= 11)) {
-                    return 'Height must be between 1–8 ft and 0–11 in';
-                }
+                if (!Number.isFinite(weightNum) || weightNum < 50 || weightNum > 500) return "Please enter a valid weight (50–500 lbs)";
+
+                if (!/^\d+'\d{1,2}"$/.test(formData.height)) return 'Please enter height as feet & inches (e.g., 5\'9")';
+                const [fStr, iStr] = formData.height.split(/'|"/).filter(Boolean);
+                const fNum = Number(fStr);
+                const iNum = Number(iStr);
+                if (!(fNum >= 1 && fNum <= 8) || !(iNum >= 0 && iNum <= 11)) return "Height must be between 1–8 ft and 0–11 in";
                 break;
             }
             case 3: {
-                if (formData.goals.length === 0) {
-                    return 'Please select at least one fitness goal';
-                }
+                if (formData.goals.length === 0) return "Please select at least one fitness goal";
                 break;
             }
         }
         return null;
-    };
-
-    const handleSubmit = async () => {
-        const validationError = validateStep(3);
-        if (validationError) return setError(validationError);
-
-        setLoading(true);
-        setError('');
-        try {
-            await signUpApi({
-                email: formData.email,
-                name: formData.name,
-                password: formData.password, // send to backend
-                age: Number(formData.age),
-                height: formData.height,
-                weight: Number(formData.weight),
-                experienceLevel: formData.experienceLevel,
-                workoutVolume: formData.workoutVolume,
-                goals: formData.goals,
-                equipment: formData.equipment,
-            });
-
-            // OPTIONAL: notify parent without password (matches your prop type)
-            onSignup({
-                email: formData.email,
-                name: formData.name,
-                age: Number(formData.age),
-                height: formData.height,
-                weight: Number(formData.weight),
-                experienceLevel: formData.experienceLevel,
-                workoutVolume: formData.workoutVolume,
-                goals: formData.goals,
-                equipment: formData.equipment,
-            });
-
-        } catch (e: any) {
-            setError(e?.message || 'Signup failed. Please try again.');
-        } finally {
-            setLoading(false);
-        }
     };
 
     const handleNext = async () => {
@@ -187,10 +117,10 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                 const exists = await emailExistsApi(formData.email);
                 if (exists) {
                     setError("An account with this email already exists.");
-                    return; // stop here (don’t go to step 2)
+                    return;
                 }
-            } catch {
-                setError("Could not verify email right now. Please try again.");
+            } catch (e: any) {
+                setError(e?.message || "Could not verify email right now. Please try again.");
                 return;
             } finally {
                 setLoading(false);
@@ -202,8 +132,40 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
     };
 
     const handleBack = () => {
-        setError('');
+        setError("");
         setCurrentStep((s) => s - 1);
+    };
+
+    const handleSubmit = async () => {
+        const validationError = validateStep(3);
+        if (validationError) return setError(validationError);
+
+        setLoading(true);
+        setError("");
+        try {
+            const payload: SignupPayload = {
+                email: formData.email.trim().toLowerCase(),
+                name: formData.name,
+                password: formData.password,
+                age: Number(formData.age),
+                height: formData.height,
+                weight: Number(formData.weight),
+                experienceLevel: formData.experienceLevel,
+                workoutVolume: formData.workoutVolume,
+                goals: formData.goals,
+                equipment: formData.equipment,
+            };
+
+            // ✅ backend returns { id, email, name }
+            const user = await signUpApi(payload);
+
+            // ✅ pass back into app so it can store localStorage etc.
+            onSignup(user);
+        } catch (e: any) {
+            setError(e?.message || "Signup failed. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const renderStepIndicator = () => (
@@ -211,13 +173,13 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             {[1, 2, 3].map((step) => (
                 <div
                     key={step}
-                    className={`step ${step <= currentStep ? 'active' : ''} ${step < currentStep ? 'completed' : ''}`}
+                    className={`step ${step <= currentStep ? "active" : ""} ${step < currentStep ? "completed" : ""}`}
                 >
                     <div className="step-number">{step}</div>
                     <div className="step-label">
-                        {step === 1 && 'Account'}
-                        {step === 2 && 'Physical'}
-                        {step === 3 && 'Fitness'}
+                        {step === 1 && "Account"}
+                        {step === 2 && "Physical"}
+                        {step === 3 && "Fitness"}
                     </div>
                 </div>
             ))}
@@ -227,7 +189,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
     const renderStep1 = () => (
         <div className="signup-step">
             <h3>Create Your Account</h3>
-            <p>Let's start with your basic information</p>
+            <p>Let&apos;s start with your basic information</p>
 
             <div className="form-group">
                 <label htmlFor="name">Full Name</label>
@@ -329,7 +291,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
 
             <div className="form-group">
                 <label>Height</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: "flex", gap: "10px" }}>
                     <input
                         type="number"
                         id="height-feet"
@@ -361,8 +323,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                         disabled={loading}
                     />
                 </div>
-                <small style={{ color: 'rgba(255,255,255,0.6)' }}>
-                    Saved as: {formData.height || '—'}
+                <small style={{ color: "rgba(255,255,255,0.6)" }}>
+                    Saved as: {formData.height || "—"}
                 </small>
             </div>
         </div>
@@ -412,14 +374,12 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                     {goalOptions.map((goal) => (
                         <div
                             key={goal.id}
-                            className={`goal-option ${formData.goals.includes(goal.id) ? 'selected' : ''}`}
+                            className={`goal-option ${formData.goals.includes(goal.id) ? "selected" : ""}`}
                             onClick={() => handleGoalToggle(goal.id)}
                         >
                             <div className="goal-header">
                                 <span className="goal-label">{goal.label}</span>
-                                <div className="goal-checkbox">
-                                    {formData.goals.includes(goal.id) ? '✓' : '+'}
-                                </div>
+                                <div className="goal-checkbox">{formData.goals.includes(goal.id) ? "✓" : "+"}</div>
                             </div>
                             <p className="goal-description">{goal.description}</p>
                         </div>
@@ -434,7 +394,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             <div className="auth-card signup-card">
                 <div className="auth-logo">
                     <img src="/IronMindLogoWithoutText.png" alt="IronMind Logo" className="auth-logo-image" />
-                    <div className="auth-logo-fallback" style={{ display: 'none' }}>
+                    <div className="auth-logo-fallback" style={{ display: "none" }}>
                         <div className="logo-text">🧠 IronMind</div>
                     </div>
                 </div>
@@ -471,7 +431,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                                     Creating Account...
                                 </div>
                             ) : (
-                                'Create Account'
+                                "Create Account"
                             )}
                         </button>
                     )}
@@ -479,7 +439,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
 
                 <div className="auth-footer">
                     <p>
-                        Already have an account?{' '}
+                        Already have an account?{" "}
                         <button onClick={onSwitchToLogin} className="auth-link" disabled={loading}>
                             Sign In
                         </button>
@@ -495,8 +455,6 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             </div>
         </div>
     );
-
-
 };
 
 export default Signup;

@@ -25,8 +25,11 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://ironmind:ironmind_pw@db:5432/ironmind_db
+      UPLOAD_DIR: /app/uploads
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy

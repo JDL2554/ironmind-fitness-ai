@@ -5,6 +5,7 @@ python-dotenv
 pydantic
 pydantic[email]
 bcrypt
+python-multipart
 
 # Optional for ML / analytics later:
 numpy==1.26.2

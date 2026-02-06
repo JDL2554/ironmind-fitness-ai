@@ -29,13 +29,13 @@ def login(payload: LoginRequest):
         if not row:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        # Use dict-style access (works for DictRow/RealDictRow)
+        # RealDictCursor returns dict-like row
         user_id = row["id"]
         email = row["email"]
         name = row["name"]
         password_hash = row["password_hash"]
 
-        # Normalize hash to bytes safely
+        # Normalize hash to bytes
         if isinstance(password_hash, memoryview):
             password_hash = password_hash.tobytes()
         if isinstance(password_hash, str):
@@ -43,10 +43,7 @@ def login(payload: LoginRequest):
         else:
             password_hash_bytes = bytes(password_hash)
 
-        ok = bcrypt.checkpw(
-            payload.password.encode("utf-8"),
-            password_hash_bytes
-        )
+        ok = bcrypt.checkpw(payload.password.encode("utf-8"), password_hash_bytes)
         if not ok:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 

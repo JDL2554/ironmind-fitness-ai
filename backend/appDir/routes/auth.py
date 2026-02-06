@@ -20,6 +20,23 @@ class SignupRequest(BaseModel):
     goals: list[str] = Field(min_length=1)
     equipment: str
 
+@router.get("/{user_id}")
+def get_profile(user_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, email, name, profile_image_url FROM users WHERE id = %s",
+            (user_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        return row  # RealDictCursor -> dict
+    finally:
+        cur.close()
+        conn.close()
+
 @router.post("/auth/signup")
 def signup(payload: SignupRequest):
     pw_hash = bcrypt.hashpw(payload.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -47,13 +64,19 @@ def signup(payload: SignupRequest):
             json.dumps(payload.goals),
             payload.equipment
         ))
+
         row = cur.fetchone()
         conn.commit()
+
+        # With RealDictCursor, row is dict like {"id":..., "email":..., "name":...}
         return row
+
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
         raise HTTPException(status_code=409, detail="Email already registered")
+
     finally:
+        cur.close()
         conn.close()
 
 @router.get("/auth/email-exists")

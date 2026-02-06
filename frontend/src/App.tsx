@@ -13,11 +13,12 @@ import Settings from "./pages/Settings";
 import "./App.css";
 
 interface User {
+    id: number;
     email: string;
     name: string;
     experienceLevel?: string;
+    profile_image_url?: string | null;
 }
-
 function App() {
     const navigate = useNavigate();
 
@@ -40,12 +41,12 @@ function App() {
     // Restore user on refresh
     // -------------------------------------------------
     useEffect(() => {
-        const saved = localStorage.getItem("ironmind_user");
+        const saved = sessionStorage.getItem("ironmind_user");
         if (saved) {
             try {
                 setUser(JSON.parse(saved));
             } catch {
-                localStorage.removeItem("ironmind_user");
+                sessionStorage.removeItem("ironmind_user");
             }
         }
     }, []);
@@ -84,14 +85,19 @@ function App() {
     // -------------------------------------------------
     const handleAuthenticated = (userData: User) => {
         setUser(userData);
-        localStorage.setItem("ironmind_user", JSON.stringify(userData));
+        sessionStorage.setItem("ironmind_user", JSON.stringify(userData));
         navigate("/dashboard", { replace: true });
     };
 
     const handleLogout = () => {
         setUser(null);
-        localStorage.removeItem("ironmind_user");
+        sessionStorage.removeItem("ironmind_user");
         navigate("/login", { replace: true });
+    };
+
+    const handleUserUpdate = (nextUser: User) => {
+        setUser(nextUser);
+        sessionStorage.setItem("ironmind_user", JSON.stringify(nextUser));
     };
 
     // -------------------------------------------------
@@ -215,7 +221,7 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/workout" element={<Workout />} />
                     <Route path="/progress" element={<Progress />} />
-                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>
