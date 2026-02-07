@@ -1,3 +1,5 @@
+export{};
+/*
 import React, { useState, useEffect } from 'react';
 import { exerciseApi, testBackendConnection } from '../services/api';
 import { Exercise } from '../types';
@@ -52,11 +54,14 @@ const ApiTest: React.FC = () => {
         }
     };
 
-    return (
+
+ */
+
+/*    return (
         <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
             <h1>🧪 API Connection Test</h1>
 
-            {/* Connection Status */}
+            {}
             <div style={{
                 padding: '15px',
                 marginBottom: '20px',
@@ -81,7 +86,7 @@ const ApiTest: React.FC = () => {
                 )}
             </div>
 
-            {/* Test Buttons */}
+            {}
             <div style={{ marginBottom: '20px' }}>
                 <button
                     onClick={checkConnection}
@@ -130,14 +135,14 @@ const ApiTest: React.FC = () => {
                 </button>
             </div>
 
-            {/* Loading State */}
+            {}
             {loading && (
                 <div style={{ color: '#007bff', marginBottom: '20px' }}>
                     ⏳ Loading...
                 </div>
             )}
 
-            {/* Error State */}
+            {}
             {error && (
                 <div style={{
                     color: '#dc3545',
@@ -150,7 +155,7 @@ const ApiTest: React.FC = () => {
                 </div>
             )}
 
-            {/* Exercise Results */}
+            {}
             {exercises.length > 0 && (
                 <div>
                     <h3>📊 Exercise Results ({exercises.length})</h3>
@@ -182,5 +187,5 @@ const ApiTest: React.FC = () => {
         </div>
     );
 };
-
-export default ApiTest;
+*/
+//export default ApiTest;

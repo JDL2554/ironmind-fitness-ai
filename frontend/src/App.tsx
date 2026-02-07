@@ -1,37 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import AuthContainer from './components/UserAuthorization/AuthContainer';
-import './App.css';
+import React, { useState, useEffect } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+
+import AuthContainer from "./components/UserAuthorization/AuthContainer";
+import AppLayout from "./components/Layout/AppLayout";
+
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import Workout from "./pages/Workout";
+import Progress from "./pages/Progress";
+import Settings from "./pages/Settings";
+
+import "./App.css";
 
 interface User {
+    id: number;
     email: string;
     name: string;
     experienceLevel?: string;
+    profile_image_url?: string | null;
 }
-
 function App() {
+    const navigate = useNavigate();
+
     const [loading, setLoading] = useState(true);
-    const [loadingText, setLoadingText] = useState('Initializing IronMind...');
+    const [loadingText, setLoadingText] = useState("Initializing IronMind...");
     const [progress, setProgress] = useState(0);
     const [currentStep, setCurrentStep] = useState(0);
     const [user, setUser] = useState<User | null>(null);
 
     const loadingSteps = [
-        'Initializing IronMind...',
-        'Loading exercise database...',
-        'Calibrating AI recommendations...',
-        'Preparing reinforcement learning...',
-        'Optimizing workout algorithms...',
-        'Ready to forge your fitness!'
+        "Initializing IronMind...",
+        "Loading exercise database...",
+        "Calibrating AI recommendations...",
+        "Preparing reinforcement learning...",
+        "Optimizing workout algorithms...",
+        "Ready to forge your fitness!",
     ];
 
-    // Loading screen simulation
+    // -------------------------------------------------
+    // Restore user on refresh
+    // -------------------------------------------------
+    useEffect(() => {
+        const saved = sessionStorage.getItem("ironmind_user");
+        if (saved) {
+            try {
+                setUser(JSON.parse(saved));
+            } catch {
+                sessionStorage.removeItem("ironmind_user");
+            }
+        }
+    }, []);
+
+    // -------------------------------------------------
+    // Loading screen simulation (UNCHANGED)
+    // -------------------------------------------------
     useEffect(() => {
         const interval = setInterval(() => {
             setProgress((prev) => {
                 const newProgress = prev + 2;
+                const stepIndex = Math.floor(
+                    (newProgress / 100) * (loadingSteps.length - 1)
+                );
 
-                // Update loading text based on progress
-                const stepIndex = Math.floor((newProgress / 100) * (loadingSteps.length - 1));
                 if (stepIndex !== currentStep && stepIndex < loadingSteps.length) {
                     setCurrentStep(stepIndex);
                     setLoadingText(loadingSteps[stepIndex]);
@@ -39,10 +69,10 @@ function App() {
 
                 if (newProgress >= 100) {
                     clearInterval(interval);
-                    // End loading after animation completes
                     setTimeout(() => setLoading(false), 1000);
                     return 100;
                 }
+
                 return newProgress;
             });
         }, 80);
@@ -50,20 +80,33 @@ function App() {
         return () => clearInterval(interval);
     }, [currentStep]);
 
+    // -------------------------------------------------
+    // Auth handlers
+    // -------------------------------------------------
     const handleAuthenticated = (userData: User) => {
         setUser(userData);
+        sessionStorage.setItem("ironmind_user", JSON.stringify(userData));
+        navigate("/dashboard", { replace: true });
     };
 
     const handleLogout = () => {
         setUser(null);
+        sessionStorage.removeItem("ironmind_user");
+        navigate("/login", { replace: true });
     };
 
-    // Show loading screen
+    const handleUserUpdate = (nextUser: User) => {
+        setUser(nextUser);
+        sessionStorage.setItem("ironmind_user", JSON.stringify(nextUser));
+    };
+
+    // -------------------------------------------------
+    // Loading screen (UNCHANGED)
+    // -------------------------------------------------
     if (loading) {
         return (
             <div className="App">
                 <div className="loading-container">
-                    {/* Animated Background */}
                     <div className="background-animation">
                         <div className="floating-icon icon-1">💪</div>
                         <div className="floating-icon icon-2">🏋️</div>
@@ -73,9 +116,7 @@ function App() {
                         <div className="floating-icon icon-6">🔥</div>
                     </div>
 
-                    {/* Main Content */}
                     <div className="loading-content">
-                        {/* Logo Section */}
                         <div className="logo-section">
                             <div className="main-logo">
                                 <img
@@ -83,15 +124,13 @@ function App() {
                                     alt="IronMind Logo"
                                     className="logo-image"
                                     onError={(e) => {
-                                        // Fallback to text logo if image doesn't load
-                                        e.currentTarget.style.display = 'none';
-                                        const fallback = document.querySelector('.fallback-logo');
+                                        e.currentTarget.style.display = "none";
+                                        const fallback = document.querySelector(".fallback-logo");
                                         if (fallback) {
-                                            (fallback as HTMLElement).style.display = 'block';
+                                            (fallback as HTMLElement).style.display = "block";
                                         }
                                     }}
                                 />
-                                {/* Fallback logo */}
                                 <div className="fallback-logo">
                                     <div className="logo-icon">
                                         <div className="brain-icon">🧠</div>
@@ -103,29 +142,31 @@ function App() {
                                     </h1>
                                 </div>
                             </div>
-                            <p className="tagline">AI-Powered Personal Training That Learns From You</p>
+                            <p className="tagline">
+                                AI-Powered Personal Training That Learns From You
+                            </p>
                         </div>
 
-                        {/* Loading Section */}
                         <div className="loading-section">
                             <div className="progress-container">
                                 <div className="progress-bar">
                                     <div
                                         className="progress-fill"
                                         style={{ width: `${progress}%` }}
-                                    ></div>
-                                    <div className="progress-glow"></div>
+                                    />
+                                    <div className="progress-glow" />
                                 </div>
                                 <div className="progress-text">{Math.round(progress)}%</div>
                             </div>
 
                             <p className="loading-message">{loadingText}</p>
 
-                            {/* Feature Highlights */}
                             <div className="features-grid">
                                 <div className="feature-item">
                                     <div className="feature-icon">🎯</div>
-                                    <div className="feature-text">Personalized Recommendations</div>
+                                    <div className="feature-text">
+                                        Personalized Recommendations
+                                    </div>
                                 </div>
                                 <div className="feature-item">
                                     <div className="feature-icon">📈</div>
@@ -138,15 +179,13 @@ function App() {
                             </div>
                         </div>
 
-                        {/* Pulsing Loader */}
                         <div className="pulse-loader">
-                            <div className="pulse pulse-1"></div>
-                            <div className="pulse pulse-2"></div>
-                            <div className="pulse pulse-3"></div>
+                            <div className="pulse pulse-1" />
+                            <div className="pulse pulse-2" />
+                            <div className="pulse pulse-3" />
                         </div>
                     </div>
 
-                    {/* Bottom Credits */}
                     <div className="credits">
                         <p>Powered by Machine Learning & Reinforcement Learning</p>
                     </div>
@@ -155,58 +194,39 @@ function App() {
         );
     }
 
-    // Show authentication if no user
-    if (!user) {
-        return <AuthContainer onAuthenticated={handleAuthenticated} />;
-    }
-
-    // Show main app for authenticated user
+    // -------------------------------------------------
+    // Routes
+    // -------------------------------------------------
     return (
-        <div className="App">
-            <div className="main-app">
-                <header className="main-header">
-                    <div className="header-content">
-                        <div className="logo-section">
-                            <img src="/IronMindLogoWithoutText.png" alt="IronMind" className="header-logo" />
-                            <h1>IronMind</h1>
-                        </div>
-                        <div className="user-section">
-                            <span>Welcome, {user.name}!</span>
-                            <button onClick={handleLogout} className="logout-btn">
-                                Logout
-                            </button>
-                        </div>
-                    </div>
-                </header>
+        <Routes>
+            {/* ----------------- PUBLIC ----------------- */}
+            {!user && (
+                <>
+                    <Route
+                        path="/login"
+                        element={<AuthContainer onAuthenticated={handleAuthenticated} />}
+                    />
+                    <Route
+                        path="/signup"
+                        element={<AuthContainer onAuthenticated={handleAuthenticated} />}
+                    />
+                    <Route path="*" element={<Navigate to="/login" replace />} />
+                </>
+            )}
 
-                <main className="main-content">
-                    <div className="dashboard">
-                        <h2>🎯 Your AI Fitness Dashboard</h2>
-                        <p>Ready to start your personalized workout journey!</p>
-
-                        <div className="dashboard-cards">
-                            <div className="dashboard-card">
-                                <h3>🏋️ Generate Workout</h3>
-                                <p>Get AI-powered exercise recommendations</p>
-                                <button className="card-button">Start Workout</button>
-                            </div>
-
-                            <div className="dashboard-card">
-                                <h3>📊 View Progress</h3>
-                                <p>Track your fitness journey and improvements</p>
-                                <button className="card-button">View Stats</button>
-                            </div>
-
-                            <div className="dashboard-card">
-                                <h3>⚙️ Preferences</h3>
-                                <p>Customize your AI recommendations</p>
-                                <button className="card-button">Settings</button>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
-        </div>
+            {/* ----------------- PROTECTED ----------------- */}
+            {user && (
+                <Route element={<AppLayout user={user} onLogout={handleLogout} />}>
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/workout" element={<Workout />} />
+                    <Route path="/progress" element={<Progress />} />
+                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Route>
+            )}
+        </Routes>
     );
 }
 
