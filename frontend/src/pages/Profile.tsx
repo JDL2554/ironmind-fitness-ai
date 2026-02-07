@@ -93,8 +93,32 @@ export default function Profile({
                     <div style={{ fontSize: 20, fontWeight: 700 }}>{user.name}</div>
                     <div style={{ opacity: 0.8 }}>{user.email}</div>
 
-                    <button onClick={onPick} style={{ marginTop: 10 }}>
-                        Change Photo
+                    <button
+                        onClick={onPick}
+                        style={{
+                            marginTop: 10,
+                            padding: "8px 14px",
+                            borderRadius: 999,
+                            border: "1px solid rgba(255,255,255,0.18)",
+                            background: "rgba(255,255,255,0.06)",
+                            color: "rgba(255,255,255,0.92)",
+                            fontSize: 14,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "transform 0.12s ease, background 0.12s ease, border-color 0.12s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(255,255,255,0.10)";
+                            e.currentTarget.style.borderColor = "rgba(255,255,255,0.28)";
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                            e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)";
+                            e.currentTarget.style.transform = "translateY(0)";
+                        }}
+                    >
+                        Change photo
                     </button>
 
                     <input

@@ -5,6 +5,7 @@ export type User = {
     email: string;
     name: string;
     experienceLevel?: string;
+    profile_image_url?: string | null;
 };
 
 export type SignupPayload = {
@@ -42,6 +43,7 @@ export async function loginApi(email: string, password: string): Promise<User> {
         email: data.email,
         name: data.name,
         experienceLevel: data.experienceLevel,
+        profile_image_url: data.profile_image_url ?? null,
     };
 }
 
@@ -68,6 +70,7 @@ export async function signUpApi(payload: SignupPayload): Promise<User> {
         id: data.id,
         email: data.email,
         name: data.name,
+        profile_image_url: data.profile_image_url ?? null,
     };
 }
 

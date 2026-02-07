@@ -27,14 +27,15 @@ async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
     with open(filepath, "wb") as f:
         f.write(data)
 
-    # Save filename to DB so it persists across refresh/navigation
+    public_url = f"/uploads/{filename}"
+
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
         "UPDATE users SET profile_image_url = %s WHERE id = %s",
-        (filename, user_id)
+        (public_url, user_id)
     )
     conn.commit()
     conn.close()
 
-    return {"photo_url": f"/uploads/{filename}"}
+    return {"profile_image_url": public_url}
