@@ -1,3 +1,5 @@
+import {User} from "./api";
+
 const API_BASE = "http://localhost:8000/api";
 
 export async function uploadProfilePhoto(userId: number, file: File) {
@@ -29,4 +31,17 @@ export async function getProfile(userId: number) {
         name: string;
         profile_image_url?: string | null;
     }>;
+}
+
+export async function updateProfile(userId: number, patch: Partial<Pick<User, "email" | "name">>) {
+    const res = await fetch(`${API_BASE}/profile/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail || "Update failed");
+
+    return data as User; // expects {id,email,name,profile_image_url}
 }
