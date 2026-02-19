@@ -2,9 +2,11 @@ import os
 import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from appDir.core.db import get_conn
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from psycopg2 import errors
 import bcrypt
+import json
+from typing import Optional
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -22,10 +24,22 @@ class ProfileUpdate(BaseModel):
     email: EmailStr | None = None
     name: str | None = None
 
+    currentPassword: Optional[str] = None
+
 class PasswordUpdate(BaseModel):
     old_password: str
     new_password: str
     confirm_password: str
+
+class UserStatsUpdate(BaseModel):
+    age: int | None = Field(default=None, ge=13, le=120)
+    height: str | None = None
+    weight: float | None = Field(default=None, ge=50, le=500)
+
+    experienceLevel: str | None = None
+    workoutVolume: str | None = None
+    goals: list[str] | None = None
+    equipment: str | None = None
 
 @router.post("/photo")
 async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
@@ -93,6 +107,19 @@ def update_profile(user_id: int, payload: ProfileUpdate):
 
         # normalize + validate
         if payload.email is not None:
+            if not payload.currentPassword:
+                raise HTTPException(status_code=400, detail="Current password required to change email.")
+
+            cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="User not found.")
+
+            password_hash = row[0] if not isinstance(row, dict) else row["password_hash"]
+
+            if not bcrypt.checkpw(payload.currentPassword.encode("utf-8"), password_hash.encode("utf-8")):
+                raise HTTPException(status_code=401, detail="Invalid password.")
+
             new_email = payload.email.strip().lower()
             cur.execute(
                 "SELECT 1 FROM users WHERE lower(email) = %s AND id <> %s",
@@ -196,4 +223,91 @@ def update_password(user_id: int, payload: PasswordUpdate):
         return {"ok": True}
 
     finally:
+        conn.close()
+
+@router.patch("/user_stats/{user_id}")
+def update_user_stats(user_id: int, payload: UserStatsUpdate):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    try:
+        updates = []
+        params = []
+
+        if payload.age is not None:
+            updates.append("age = %s")
+            params.append(payload.age)
+
+        if payload.height is not None:
+            h = payload.height.strip()
+            if not h:
+                raise HTTPException(status_code=400, detail="Height cannot be empty.")
+            updates.append("height = %s")
+            params.append(h)
+
+        if payload.weight is not None:
+            updates.append("weight = %s")
+            params.append(payload.weight)
+
+        if payload.experienceLevel is not None:
+            updates.append("experience_level = %s")
+            params.append(payload.experienceLevel.strip())
+
+        if payload.workoutVolume is not None:
+            updates.append("workout_volume = %s")
+            params.append(payload.workoutVolume.strip())
+
+        if payload.goals is not None:
+            if len(payload.goals) == 0:
+                raise HTTPException(status_code=400, detail="Goals cannot be empty.")
+            updates.append("goals = %s::jsonb")
+            params.append(json.dumps(payload.goals))
+
+        if payload.equipment is not None:
+            updates.append("equipment = %s")
+            params.append(payload.equipment.strip())
+
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields provided.")
+
+        params.append(user_id)
+        cur.execute(
+            f"UPDATE users SET {', '.join(updates)} WHERE id = %s",
+            tuple(params),
+        )
+
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        conn.commit()
+
+        # Return updated stats
+        cur.execute(
+            """
+            SELECT
+                id,
+                age, height, weight,
+                experience_level, workout_volume, goals, equipment,
+                created_at
+            FROM users
+            WHERE id = %s
+            """,
+            (user_id,),
+        )
+        row = cur.fetchone()
+
+        return {
+            "id": row["id"],
+            "age": row["age"],
+            "height": row["height"],
+            "weight": row["weight"],
+            "experienceLevel": row["experience_level"],
+            "workoutVolume": row["workout_volume"],
+            "goals": row["goals"],
+            "equipment": row["equipment"],
+            "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+        }
+
+    finally:
+        cur.close()
         conn.close()
