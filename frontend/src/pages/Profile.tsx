@@ -62,13 +62,13 @@ export default function Profile({
 }) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-    const [err, setErr] = useState("");
     const [pwMsg, setPwMsg] = useState("");
 
     // Email edit state
     const [editingEmail, setEditingEmail] = useState(false);
     const [emailDraft, setEmailDraft] = useState(user.email);
     const [emailConfirm, setEmailConfirm] = useState("");
+    const [emailPw, setEmailPw] = useState("");
 
     // Name edit state
     const [editingName, setEditingName] = useState(false);
@@ -109,6 +109,12 @@ export default function Profile({
     const [emailSavedMsg, setEmailSavedMsg] = useState("");
     const [pwSavedMsg, setPwSavedMsg] = useState("");
 
+    const [nameErr, setNameErr] = useState("");
+    const [emailErr, setEmailErr] = useState("");
+    const [pwErr, setPwErr] = useState("");
+    const [statsErr, setStatsErr] = useState("");
+    const [imageErr, setImageErr] = useState("");
+
     useEffect(() => {
         // Reset drafts when parent user changes (login/logout/update)
         setEmailDraft(user.email);
@@ -137,7 +143,11 @@ export default function Profile({
         setEquipDraft(user.equipment ?? "");
         setGoalsDraft(user.goals ?? []);
 
-        setErr("");
+        setStatsErr("");
+        setNameErr("");
+        setPwErr("");
+        setStatsErr("");
+        setImageErr("");
     }, [user]);
 
     useEffect(() => {
@@ -221,17 +231,17 @@ export default function Profile({
     };
 
     const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        setErr("");
+        setImageErr("");
         const file = e.target.files?.[0];
         if (!file) return;
 
         if (!file.type.startsWith("image/")) {
-            setErr("Please choose an image file.");
+            setImageErr("Please choose an image file.");
             e.target.value = "";
             return;
         }
         if (file.size > 5 * 1024 * 1024) {
-            setErr("Image too large (max 5MB).");
+            setImageErr("Image too large (max 5MB).");
             e.target.value = "";
             return;
         }
@@ -241,7 +251,7 @@ export default function Profile({
             const res = await uploadProfilePhoto(user.id, file);
             onUserUpdate({ ...user, profile_image_url: res.profile_image_url });
         } catch (e: any) {
-            setErr(e?.message || "Upload failed.");
+            setImageErr(e?.message || "Upload failed.");
         } finally {
             setUploadingPhoto(false);
             e.target.value = "";
@@ -392,6 +402,11 @@ export default function Profile({
                     <div style={{ opacity: 0.8, marginTop: 4 }}>{user.email}</div>
 
                     {/* CHANGE PHOTO BUTTON */}
+                    {imageErr && (
+                        <div style={{ color: "salmon", fontWeight: 700, marginTop: 6 }}>
+                            {imageErr}
+                        </div>
+                    )}
                     <button
                         onClick={onPick}
                         disabled={uploadingPhoto}
@@ -440,7 +455,7 @@ export default function Profile({
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setErr("");
+                                            setNameErr("");
                                             setNameSavedMsg("");
                                             setEditingName(true);
                                             setNameDraft(user.name);
@@ -463,10 +478,10 @@ export default function Profile({
                                     if (savingName) return;
 
                                     try {
-                                        setErr("");
+                                        setNameErr("");
                                         setNameSavedMsg("");
                                         const nextName = nameDraft.trim();
-                                        if (!nextName) return setErr("Name cannot be empty.");
+                                        if (!nextName) return setNameErr("Name cannot be empty.");
 
                                         setSavingName(true);
 
@@ -484,7 +499,7 @@ export default function Profile({
                                         setNameSavedMsg("Saved!");
                                         window.setTimeout(() => setNameSavedMsg(""), 1600);
                                     } catch (e: any) {
-                                        setErr(e?.message || "Update failed.");
+                                        setNameErr(e?.message || "Update failed.");
                                     } finally {
                                         setSavingName(false);
                                     }
@@ -498,6 +513,12 @@ export default function Profile({
                                     style={activeInputStyle}
                                     disabled={savingName}
                                 />
+
+                                {nameErr && (
+                                    <div style={{ color: "salmon", fontWeight: 700, marginTop: 6 }}>
+                                        {nameErr}
+                                    </div>
+                                )}
 
                                 <div style={{ display: "flex", gap: 10 }}>
                                     <button
@@ -520,9 +541,9 @@ export default function Profile({
                                         disabled={savingName}
                                         onClick={() => {
                                             if (savingName) return;
-                                            setErr("");
                                             setEditingName(false);
                                             setNameDraft(user.name);
+                                            setNameErr("");
                                         }}
                                         style={{ ...cancelBtnStyle, ...(savingName ? disabledBtnStyle : {}) }}
                                     >
@@ -545,11 +566,12 @@ export default function Profile({
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setErr("");
+                                            setEmailErr("");
                                             setEmailSavedMsg("");
                                             setEditingEmail(true);
                                             setEmailDraft(user.email);
                                             setEmailConfirm("");
+                                            setEmailPw("");
                                         }}
                                         style={editBtnStyle}
                                     >
@@ -568,18 +590,19 @@ export default function Profile({
                                     if (savingEmail) return;
 
                                     try {
-                                        setErr("");
+                                        setEmailErr("");
                                         setEmailSavedMsg("");
 
                                         const next = emailDraft.trim().toLowerCase();
                                         const conf = emailConfirm.trim().toLowerCase();
 
-                                        if (!next) return setErr("Email cannot be empty.");
-                                        if (next !== conf) return setErr("Emails do not match.");
+                                        if (!emailPw) return setEmailErr("Enter your password to change email.");
+                                        if (!next) return setEmailErr("Email cannot be empty.");
+                                        if (next !== conf) return setEmailErr("Emails do not match.");
 
                                         setSavingEmail(true);
 
-                                        const updated = await updateProfile(user.id, { email: next });
+                                        const updated = await updateProfile(user.id, { email: next, currentPassword: emailPw });
 
                                         onUserUpdate({
                                             ...user,
@@ -590,17 +613,25 @@ export default function Profile({
 
                                         setEditingEmail(false);
                                         setEmailConfirm("");
+                                        setEmailPw("");
 
                                         setEmailSavedMsg("Saved!");
                                         window.setTimeout(() => setEmailSavedMsg(""), 1600);
                                     } catch (e: any) {
-                                        setErr(e?.message || "Update failed.");
+                                        setEmailErr(e?.message || "Update failed.");
                                     } finally {
                                         setSavingEmail(false);
                                     }
                                 }}
                                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
                             >
+                                <input
+                                    type="password"
+                                    value={emailPw}
+                                    onChange={(e) => setEmailPw(e.target.value)}
+                                    placeholder="Confirm password to change email"
+                                    style={activeInputStyle}
+                                />
                                 <input
                                     value={emailDraft}
                                     onChange={(e) => setEmailDraft(e.target.value)}
@@ -616,6 +647,12 @@ export default function Profile({
                                     style={activeInputStyle}
                                     disabled={savingEmail}
                                 />
+
+                                {emailErr && (
+                                    <div style={{ color: "salmon", fontWeight: 700, marginTop: 6 }}>
+                                        {emailErr}
+                                    </div>
+                                )}
 
                                 <div style={{ display: "flex", gap: 10 }}>
                                     <button
@@ -641,7 +678,7 @@ export default function Profile({
                                             setEditingEmail(false);
                                             setEmailDraft(user.email);
                                             setEmailConfirm("");
-                                            setErr("");
+                                            setEmailErr("");
                                         }}
                                         style={{ ...cancelBtnStyle, ...(savingEmail ? disabledBtnStyle : {}) }}
                                     >
@@ -660,7 +697,7 @@ export default function Profile({
                             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                 <button
                                     onClick={() => {
-                                        setErr("");
+                                        setPwErr("");
                                         setPwMsg("");
                                         setPwSavedMsg("");
                                         setEditingPassword(true);
@@ -703,6 +740,12 @@ export default function Profile({
                                     style={activeInputStyle}
                                 />
 
+                                {pwErr && (
+                                    <div style={{ color: "salmon", fontWeight: 700, marginTop: 6 }}>
+                                        {pwErr}
+                                    </div>
+                                )}
+
                                 <div style={{ display: "flex", gap: 10 }}>
                                     <button
                                         id="pwConfirmBtn"
@@ -711,14 +754,14 @@ export default function Profile({
                                             if (savingPw) return;
 
                                             try {
-                                                setErr("");
+                                                setPwErr("")
                                                 setPwMsg("");
                                                 setPwSavedMsg("");
 
-                                                if (!oldPw) return setErr("Enter your old password.");
-                                                if (newPw.length < 8) return setErr("New password must be at least 8 characters.");
-                                                if (newPw !== newPw2) return setErr("New passwords do not match.");
-                                                if (oldPw === newPw) return setErr("New password must be different from old password.");
+                                                if (!oldPw) return setPwErr("Enter your old password.");
+                                                if (newPw.length < 8) return setPwErr("New password must be at least 8 characters.");
+                                                if (newPw !== newPw2) return setPwErr("New passwords do not match.");
+                                                if (oldPw === newPw) return setPwErr("New password must be different from old password.");
 
                                                 setSavingPw(true);
 
@@ -733,7 +776,7 @@ export default function Profile({
                                                 setPwSavedMsg("Saved!");
                                                 window.setTimeout(() => setPwSavedMsg(""), 1600);
                                             } catch (e: any) {
-                                                setErr(e?.message || "Password update failed.");
+                                                setPwErr(e?.message || "Password update failed.");
                                             } finally {
                                                 setSavingPw(false);
                                             }
@@ -758,8 +801,8 @@ export default function Profile({
                                             setOldPw("");
                                             setNewPw("");
                                             setNewPw2("");
-                                            setErr("");
                                             setPwMsg("");
+                                            setPwErr("");
                                         }}
                                         style={{ ...cancelBtnStyle, ...(savingPw ? disabledBtnStyle : {}) }}
                                     >
@@ -797,7 +840,7 @@ export default function Profile({
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setErr("");
+                                            setStatsErr("");
                                             setEditingStats(true);
 
                                             setAgeDraft(user.age?.toString() ?? "");
@@ -833,8 +876,8 @@ export default function Profile({
                                 onSubmit={async (e) => {
                                     e.preventDefault();
                                     if (savingStats) return;
-                                    setErr("");
                                     setStatsSavedMsg("");
+                                    setStatsErr("");
                                     try {
                                         const age = ageDraft.trim() ? Number(ageDraft) : undefined;
                                         const weight = weightDraft.trim() ? Number(weightDraft) : undefined;
@@ -842,21 +885,24 @@ export default function Profile({
                                         const i = inchesDraft.trim() ? Number(inchesDraft) : undefined;
 
                                         if (age !== undefined && (!Number.isFinite(age) || age < 13 || age > 120)) {
-                                            return setErr("Age must be between 13 and 120.");
+                                            return setStatsErr("Age must be between 13 and 120.");
                                         }
                                         if (weight !== undefined && (!Number.isFinite(weight) || weight < 50 || weight > 500)) {
-                                            return setErr("Weight must be between 50 and 500.");
+                                            return setStatsErr("Weight must be between 50 and 500.");
                                         }
                                         let height: string | undefined = undefined;
                                         if (f !== undefined || i !== undefined) {
-                                            if (f === undefined || i === undefined) return setErr("Enter both feet and inches.");
-                                            if (!Number.isFinite(f) || f < 1 || f > 8) return setErr("Feet must be between 1 and 8.");
-                                            if (!Number.isFinite(i) || i < 0 || i > 11) return setErr("Inches must be between 0 and 11.");
+                                            if (f === undefined || i === undefined) return setStatsErr("Enter both feet and" +
+                                                " inches.");
+                                            if (!Number.isFinite(f) || f < 1 || f > 8) return setStatsErr("Feet must be" +
+                                                " between 1 and 8.");
+                                            if (!Number.isFinite(i) || i < 0 || i > 11) return setStatsErr("Inches must be" +
+                                                " between 0 and 11.");
                                             height = `${f}'${i}"`;
                                         }
 
                                         if (goalsDraft.length === 0) {
-                                            return setErr("Pick at least one goal.");
+                                            return setStatsErr("Pick at least one goal.");
                                         }
 
                                         setSavingStats(true);
@@ -877,7 +923,7 @@ export default function Profile({
                                         setStatsSavedMsg("Saved!");
                                         window.setTimeout(() => setStatsSavedMsg(""), 1600);
                                     } catch (e: any) {
-                                        setErr(e?.message || "Update failed.");
+                                        setStatsErr(e?.message || "Update failed.");
                                     } finally {
                                         setSavingStats(false);
                                     }
@@ -981,6 +1027,12 @@ export default function Profile({
                                     })}
                                 </div>
 
+                                {statsErr && (
+                                    <div style={{ color: "salmon", fontWeight: 700, marginTop: 6 }}>
+                                        {statsErr}
+                                    </div>
+                                )}
+
                                 <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
                                     <button
                                         type="submit"
@@ -1001,7 +1053,6 @@ export default function Profile({
                                         onClick={() => {
                                             if (savingStats) return;
                                             setEditingStats(false);
-                                            setErr("");
                                             setAgeDraft(user.age?.toString() ?? "");
                                             setWeightDraft(user.weight?.toString() ?? "");
                                             setExpDraft(user.experienceLevel ?? "");
@@ -1022,6 +1073,7 @@ export default function Profile({
                                                 setFeetDraft("");
                                                 setInchesDraft("");
                                             }
+                                            setStatsErr("");
                                         }}
                                         style={cancelBtnStyle}
                                     >
@@ -1046,7 +1098,6 @@ export default function Profile({
                         </div>
                     )}
 
-                    {err && <div style={{ color: "salmon", marginTop: 16 }}>{err}</div>}
                 </div>
             </div>
         </div>

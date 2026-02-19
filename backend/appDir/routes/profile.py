@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 from psycopg2 import errors
 import bcrypt
 import json
+from typing import Optional
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -22,6 +23,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 class ProfileUpdate(BaseModel):
     email: EmailStr | None = None
     name: str | None = None
+
+    currentPassword: Optional[str] = None
 
 class PasswordUpdate(BaseModel):
     old_password: str
@@ -104,6 +107,19 @@ def update_profile(user_id: int, payload: ProfileUpdate):
 
         # normalize + validate
         if payload.email is not None:
+            if not payload.currentPassword:
+                raise HTTPException(status_code=400, detail="Current password required to change email.")
+
+            cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="User not found.")
+
+            password_hash = row[0] if not isinstance(row, dict) else row["password_hash"]
+
+            if not bcrypt.checkpw(payload.currentPassword.encode("utf-8"), password_hash.encode("utf-8")):
+                raise HTTPException(status_code=401, detail="Invalid password.")
+
             new_email = payload.email.strip().lower()
             cur.execute(
                 "SELECT 1 FROM users WHERE lower(email) = %s AND id <> %s",

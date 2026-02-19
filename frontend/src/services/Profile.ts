@@ -3,15 +3,7 @@ const API_BASE = "http://localhost:8000/api";
 export type ProfilePatch = Partial<{
     email: string;
     name: string;
-
-    age: number;
-    height: string;
-    weight: number;
-
-    experienceLevel: string;
-    workoutVolume: string;
-    goals: string[];
-    equipment: string;
+    currentPassword: string;
 }>;
 
 export async function uploadProfilePhoto(userId: number, file: File) {
