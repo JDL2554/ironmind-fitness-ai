@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { uploadProfilePhoto, updateProfile, changePassword, getProfile, updateUserStats } from "../services/Profile";
+import { uploadProfilePhoto, updateProfile, changePassword, getProfile, updateUserStats, deleteAccount } from "../services/Profile";
 
 type Experience = typeof EXPERIENCE_OPTIONS[number]["value"];
 type WorkoutVolume = typeof WORKOUT_VOLUME_OPTIONS[number]["value"];
@@ -86,9 +86,11 @@ const equipmentLabelByValue: Map<string, string> = new Map(
 export default function Profile({
                                     user,
                                     onUserUpdate,
+                                    onLogout,
                                 }: {
     user: User;
     onUserUpdate: (next: User) => void;
+    onLogout: () => void;
 }) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -99,6 +101,7 @@ export default function Profile({
     const [emailDraft, setEmailDraft] = useState(user.email);
     const [emailConfirm, setEmailConfirm] = useState("");
     const [emailPw, setEmailPw] = useState("");
+    const [deleting, setDeleting] = useState(false);
 
     // Name edit state
     const [editingName, setEditingName] = useState(false);
@@ -144,8 +147,12 @@ export default function Profile({
     const [pwErr, setPwErr] = useState("");
     const [statsErr, setStatsErr] = useState("");
     const [imageErr, setImageErr] = useState("");
+    const [delErr, setDelErr] = useState("");
 
     const [sessionLenDraft, setSessionLenDraft] = useState("");
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletingAccount, setDeletingAccount] = useState(false);
 
     useEffect(() => {
         // Reset drafts when parent user changes (login/logout/update)
@@ -181,6 +188,7 @@ export default function Profile({
         setPwErr("");
         setStatsErr("");
         setImageErr("");
+        setDelErr("");
     }, [user]);
 
     useEffect(() => {
@@ -1208,6 +1216,43 @@ export default function Profile({
                         )}
                     </div>
 
+                    <div style={{ marginTop: 34 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
+                            Danger Zone
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDelErr("");
+                                setShowDeleteModal(true);
+                            }}
+                            style={{
+                                marginTop: 15,
+                                padding: "10px 14px",
+                                borderRadius: 12,
+                                border: "1px solid rgba(239,68,68,0.45)",
+                                background: "rgba(239,68,68,0.16)",
+                                color: "white",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                width: "fit-content",
+                            }}
+                        >
+                            Delete account
+                        </button>
+
+                        <div style={{ marginTop: 8, fontSize: 13, opacity: 0.7, maxWidth: 420 }}>
+                            This will permanently remove your account and all associated data.
+                        </div>
+
+                        {delErr && (
+                            <div style={{ color: "salmon", fontWeight: 700, marginTop: 6 }}>
+                                {delErr}
+                            </div>
+                        )}
+                    </div>
+
                     {formattedCreatedAt && (
                         <div
                             style={{
@@ -1223,6 +1268,151 @@ export default function Profile({
 
                 </div>
             </div>
+            {showDeleteModal && (
+                <div
+                    onClick={() => !deletingAccount && setShowDeleteModal(false)}
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.55)",
+                        display: "grid",
+                        placeItems: "center",
+                        zIndex: 9999,
+                        padding: 16,
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            width: "min(520px, 100%)",
+                            borderRadius: 18,
+                            border: "1px solid rgba(255,255,255,0.15)",
+                            background: "rgba(20,22,28,0.92)",
+                            backdropFilter: "blur(10px)",
+                            boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+                            padding: 18,
+                        }}
+                    >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div
+                                    style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 12,
+                                        display: "grid",
+                                        placeItems: "center",
+                                        background: "rgba(239,68,68,0.18)",
+                                        border: "1px solid rgba(239,68,68,0.35)",
+                                        fontSize: 18,
+                                    }}
+                                >
+                                    ⚠️
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 900, fontSize: 16 }}>Delete your account?</div>
+                                    <div style={{ opacity: 0.75, fontSize: 13, marginTop: 2 }}>
+                                        This permanently removes your account and profile photo. This cannot be undone.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => !deletingAccount && setShowDeleteModal(false)}
+                                style={{
+                                    border: "none",
+                                    background: "transparent",
+                                    color: "rgba(255,255,255,0.75)",
+                                    cursor: deletingAccount ? "not-allowed" : "pointer",
+                                    fontSize: 18,
+                                    padding: 6,
+                                }}
+                                aria-label="Close"
+                                title="Close"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div style={{ marginTop: 14, padding: "12px 12px", borderRadius: 14, background: "rgba(255,255,255,0.05)" }}>
+                            <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.5 }}>
+                                If you’re just trying to start over, you might prefer logging out and creating a new account.
+                            </div>
+                        </div>
+
+                        {delErr && (
+                            <div style={{ marginTop: 12, color: "salmon", fontWeight: 700 }}>
+                                {delErr}
+                            </div>
+                        )}
+
+                        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+                            <button
+                                type="button"
+                                disabled={deletingAccount}
+                                onClick={() => setShowDeleteModal(false)}
+                                style={{
+                                    padding: "10px 14px",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(255,255,255,0.18)",
+                                    background: "transparent",
+                                    color: "white",
+                                    fontWeight: 700,
+                                    cursor: deletingAccount ? "not-allowed" : "pointer",
+                                    opacity: deletingAccount ? 0.65 : 1,
+                                }}
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="button"
+                                disabled={deletingAccount}
+                                onClick={async () => {
+                                    if (deletingAccount) return;
+
+                                    setDelErr("");
+                                    setDeletingAccount(true);
+                                    try {
+
+                                        await deleteAccount(user.id);
+
+                                        setShowDeleteModal(false);
+                                        onLogout();
+                                    } catch (e: any) {
+                                        setDelErr(e?.message || "Delete failed.");
+                                    } finally {
+                                        setDeletingAccount(false);
+                                    }
+                                }}
+                                style={{
+                                    padding: "10px 14px",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(239,68,68,0.45)",
+                                    background: "rgba(239,68,68,0.20)",
+                                    color: "white",
+                                    fontWeight: 900,
+                                    cursor: deletingAccount ? "not-allowed" : "pointer",
+                                    opacity: deletingAccount ? 0.7 : 1,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 10,
+                                }}
+                            >
+                                {deletingAccount ? (
+                                    <>
+                                        <span style={spinnerStyle} />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    "Yes, delete my account"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

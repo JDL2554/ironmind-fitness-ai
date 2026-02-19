@@ -239,7 +239,7 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/workout" element={<Workout />} />
                     <Route path="/progress" element={<Progress />} />
-                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} />} />
+                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>

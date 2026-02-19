@@ -117,3 +117,14 @@ export async function updateUserStats(
 
     return res.json();
 }
+
+export async function deleteAccount(userId: number) {
+    const res = await fetch(`${API_BASE}/profile/delete/${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail || "Delete failed.");
+    return data as { ok: true };
+}

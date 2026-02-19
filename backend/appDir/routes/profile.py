@@ -321,3 +321,65 @@ def update_user_stats(user_id: int, payload: UserStatsUpdate):
     finally:
         cur.close()
         conn.close()
+
+def safe_delete_upload(profile_image_url: str | None) -> None:
+    """
+    Deletes a user's uploaded profile image if it lives under UPLOAD_DIR.
+    Does nothing if empty, missing, or not under UPLOAD_DIR.
+    """
+    if not profile_image_url:
+        return
+
+    raw = profile_image_url.strip()
+    if not raw:
+        return
+
+    # Example raw: "/static/uploads/user_1_x.jpg" -> want "user_1_x.jpg"
+    # Example raw: "user_1_x.jpg" -> keep as-is
+    filename = raw.split("/")[-1]
+
+    # Basic guard: no weird paths
+    if ".." in filename or filename.startswith(".") or "/" in filename or "\\" in filename:
+        return
+
+    file_path = (UPLOAD_DIR / filename).resolve()
+
+    # Ensure file is actually inside uploads directory (prevents path traversal)
+    if UPLOAD_DIR not in file_path.parents:
+        return
+
+    # Don't crash if file doesn't exist
+    try:
+        if file_path.exists() and file_path.is_file():
+            file_path.unlink()
+    except Exception:
+        # optional: log this, but don't block deletion
+        pass
+
+
+@router.delete("/delete/{user_id}")
+def delete_user(user_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    try:
+        # 1) fetch image url first
+        cur.execute("SELECT profile_image_url FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        profile_image_url = row[0] if not isinstance(row, dict) else row.get("profile_image_url")
+
+        # 2) delete db row (may need CASCADE or child deletes first)
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+
+        # 3) delete file after commit (or before—either is fine; I prefer after DB success)
+        safe_delete_upload(profile_image_url)
+
+        return {"ok": True}
+
+    finally:
+        cur.close()
+        conn.close()
