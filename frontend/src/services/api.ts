@@ -87,3 +87,39 @@ export async function emailExistsApi(email: string): Promise<boolean> {
 
     return !!data?.exists;
 }
+
+export async function forgotPasswordApi(email: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+
+    if (!res.ok) {
+        throw new Error("Failed to send reset request.");
+    }
+}
+
+export async function resetPasswordApi(
+    token: string,
+    newPassword: string,
+    confirmPassword: string
+) {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            token,
+            new_password: newPassword,
+            confirm_password: confirmPassword,
+        }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+        throw new Error(data?.detail || "Reset failed.");
+    }
+
+    return data as { detail: string };
+}
