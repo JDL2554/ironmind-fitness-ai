@@ -2,6 +2,8 @@ import os
 import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from appDir.core.db import get_conn
+from pydantic import BaseModel, EmailStr
+from psycopg2 import errors
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -15,6 +17,9 @@ MAX_BYTES = 5 * 1024 * 1024  # 5MB
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+class ProfileUpdate(BaseModel):
+    email: EmailStr | None = None
+    name: str | None = None
 
 @router.post("/photo")
 async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
@@ -70,3 +75,66 @@ async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
                 pass
 
     return {"profile_image_url": public_url}
+
+@router.patch("/{user_id}")
+def update_profile(user_id: int, payload: ProfileUpdate):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    try:
+        updates = []
+        params = []
+
+        # normalize + validate
+        if payload.email is not None:
+            new_email = payload.email.strip().lower()
+            cur.execute(
+                "SELECT 1 FROM users WHERE lower(email) = %s AND id <> %s",
+                (new_email, user_id),
+            )
+            if cur.fetchone():
+                raise HTTPException(status_code=400, detail="Email already in use.")
+
+            updates.append("email = %s")
+            params.append(new_email)
+
+        if payload.name is not None:
+            new_name = payload.name.strip()
+            if not new_name:
+                raise HTTPException(status_code=400, detail="Name cannot be empty.")
+            updates.append("name = %s")
+            params.append(new_name)
+
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields provided.")
+
+        params.append(user_id)
+        cur.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = %s", tuple(params))
+
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        conn.commit()
+
+        # fetch updated row
+        cur.execute(
+            "SELECT id, email, name, profile_image_url FROM users WHERE id = %s",
+            (user_id,),
+        )
+        row = cur.fetchone()
+
+        # normalize tuple vs dict cursor
+        if isinstance(row, dict):
+            return row
+        return {
+            "id": row[0],
+            "email": row[1],
+            "name": row[2],
+            "profile_image_url": row[3],
+        }
+
+    except errors.UniqueViolation:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail="Email already in use.")
+    finally:
+        conn.close()

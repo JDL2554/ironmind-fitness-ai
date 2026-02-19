@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { uploadProfilePhoto } from "../services/Profile";
+import { updateProfile } from "../services/Profile";
 
 type User = {
     id: number;
@@ -17,8 +18,10 @@ export default function Profile({
 }) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [err, setErr] = useState("");
+    const [editingEmail, setEditingEmail] = useState(false);
+    const [emailDraft, setEmailDraft] = useState(user.email);
+    const [emailConfirm, setEmailConfirm] = useState("")
 
-    // ✅ show photo from the user object (so it persists)
     const photoUrl = user.profile_image_url
         ? user.profile_image_url.startsWith("http")
             ? user.profile_image_url
@@ -26,6 +29,48 @@ export default function Profile({
         : null;
 
     const onPick = () => fileInputRef.current?.click();
+
+    useEffect(() => {
+        // keep drafts synced if user changes (login/logout)
+        setEmailDraft(user.email);
+        setEmailConfirm("");
+        setEditingEmail(false);
+    }, [user.email]);
+
+    const onEmailEditClick = async () => {
+        setErr("");
+
+        if (!editingEmail) {
+            setEditingEmail(true);
+            setEmailDraft(user.email);
+            setEmailConfirm("");
+            return;
+        }
+
+        // CONFIRM mode:
+        const next = emailDraft.trim().toLowerCase();
+        const conf = emailConfirm.trim().toLowerCase();
+
+        if (!next) return setErr("Email cannot be empty.");
+        if (next !== conf) return setErr("Emails do not match.");
+
+        try {
+            const updated = await updateProfile(user.id, { email: next });
+
+            // update global user (top corner + persistence)
+            onUserUpdate({
+                ...user,
+                email: updated.email,
+                name: updated.name,
+                profile_image_url: updated.profile_image_url ?? user.profile_image_url ?? null,
+            });
+
+            setEditingEmail(false);
+            setEmailConfirm("");
+        } catch (e: any) {
+            setErr(e?.message || "Update failed.");
+        }
+    };
 
     const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setErr("");
@@ -45,8 +90,6 @@ export default function Profile({
 
         try {
             const res = await uploadProfilePhoto(user.id, file);
-
-            // ✅ update global user so it persists + top corner updates
             onUserUpdate({ ...user, profile_image_url: res.profile_image_url });
         } catch (e: any) {
             setErr(e?.message || "Upload failed.");
@@ -66,12 +109,18 @@ export default function Profile({
         <div style={{ padding: 24 }}>
             <h1>Profile</h1>
 
-            <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+                {/* PROFILE IMAGE */}
                 {photoUrl ? (
                     <img
                         src={photoUrl}
                         alt="Profile"
-                        style={{ width: 110, height: 110, borderRadius: "50%", objectFit: "cover" }}
+                        style={{
+                            width: 110,
+                            height: 110,
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                        }}
                     />
                 ) : (
                     <div
@@ -89,14 +138,16 @@ export default function Profile({
                     </div>
                 )}
 
-                <div>
+                <div style={{ flex: 1 }}>
+                    {/* NAME + EMAIL DISPLAY (UNCHANGED LOOK) */}
                     <div style={{ fontSize: 20, fontWeight: 700 }}>{user.name}</div>
-                    <div style={{ opacity: 0.8 }}>{user.email}</div>
+                    <div style={{ opacity: 0.8, marginTop: 4 }}>{user.email}</div>
 
+                    {/* CHANGE PHOTO BUTTON */}
                     <button
                         onClick={onPick}
                         style={{
-                            marginTop: 10,
+                            marginTop: 14,
                             padding: "8px 14px",
                             borderRadius: 999,
                             border: "1px solid rgba(255,255,255,0.18)",
@@ -105,17 +156,6 @@ export default function Profile({
                             fontSize: 14,
                             fontWeight: 600,
                             cursor: "pointer",
-                            transition: "transform 0.12s ease, background 0.12s ease, border-color 0.12s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "rgba(255,255,255,0.10)";
-                            e.currentTarget.style.borderColor = "rgba(255,255,255,0.28)";
-                            e.currentTarget.style.transform = "translateY(-1px)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                            e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)";
-                            e.currentTarget.style.transform = "translateY(0)";
                         }}
                     >
                         Change photo
@@ -129,7 +169,153 @@ export default function Profile({
                         onChange={onFileChange}
                     />
 
-                    {err && <div style={{ color: "salmon", marginTop: 8 }}>{err}</div>}
+                    {/* EDIT EMAIL SECTION */}
+                    <div style={{ marginTop: 28 }}>
+                        <div
+                            style={{
+                                fontSize: 14,
+                                fontWeight: 700,
+                                opacity: 0.9,
+                                marginBottom: 10,
+                            }}
+                        >
+                            Edit Email
+                        </div>
+
+                        {!editingEmail ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <input
+                                    value={user.email}
+                                    disabled
+                                    style={{
+                                        width: 320,
+                                        padding: "10px 12px",
+                                        borderRadius: 10,
+                                        border: "1px solid rgba(255,255,255,0.15)",
+                                        background: "rgba(255,255,255,0.04)",
+                                        color: "rgba(255,255,255,0.85)",
+                                        opacity: 0.75,
+                                        outline: "none",
+                                    }}
+                                />
+
+                                <button
+                                    onClick={() => {
+                                        setErr("");
+                                        setEditingEmail(true);
+                                    }}
+                                    style={{
+                                        padding: "10px 14px",
+                                        borderRadius: 10,
+                                        border: "1px solid rgba(255,255,255,0.18)",
+                                        background: "rgba(255,255,255,0.06)",
+                                        color: "white",
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Edit
+                                </button>
+                            </div>
+                        ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                <input
+                                    value={emailDraft}
+                                    onChange={(e) => setEmailDraft(e.target.value)}
+                                    placeholder="New email"
+                                    style={{
+                                        width: 320,
+                                        padding: "10px 12px",
+                                        borderRadius: 10,
+                                        border: "1px solid rgba(255,255,255,0.20)",
+                                        background: "rgba(255,255,255,0.08)",
+                                        color: "white",
+                                        outline: "none",
+                                    }}
+                                />
+
+                                <input
+                                    value={emailConfirm}
+                                    onChange={(e) => setEmailConfirm(e.target.value)}
+                                    placeholder="Confirm new email"
+                                    style={{
+                                        width: 320,
+                                        padding: "10px 12px",
+                                        borderRadius: 10,
+                                        border: "1px solid rgba(255,255,255,0.20)",
+                                        background: "rgba(255,255,255,0.08)",
+                                        color: "white",
+                                        outline: "none",
+                                    }}
+                                />
+
+                                <div style={{ display: "flex", gap: 10 }}>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                setErr("");
+
+                                                const next = emailDraft.trim().toLowerCase();
+                                                const conf = emailConfirm.trim().toLowerCase();
+
+                                                if (!next) return setErr("Email cannot be empty.");
+                                                if (next !== conf) return setErr("Emails do not match.");
+
+                                                console.log("CONFIRM CLICKED -> sending PATCH", next);
+
+                                                const updated = await updateProfile(user.id, { email: next });
+
+                                                console.log("PATCH SUCCESS -> updated user:", updated);
+
+                                                onUserUpdate(updated);
+
+                                                setEditingEmail(false);
+                                                setEmailConfirm("");
+                                            } catch (e: any) {
+                                                console.error("PATCH FAILED:", e);
+                                                setErr(e?.message || "Update failed.");
+                                            }
+                                        }}
+                                        style={{
+                                            padding: "10px 14px",
+                                            borderRadius: 10,
+                                            border: "1px solid rgba(34,197,94,0.35)",
+                                            background: "rgba(34,197,94,0.18)",
+                                            color: "white",
+                                            fontWeight: 700,
+                                            cursor: "pointer",
+                                        }}
+                                    >
+                                        Confirm
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setEditingEmail(false);
+                                            setEmailDraft(user.email);
+                                            setEmailConfirm("");
+                                            setErr("");
+                                        }}
+                                        style={{
+                                            padding: "10px 14px",
+                                            borderRadius: 10,
+                                            border: "1px solid rgba(255,255,255,0.18)",
+                                            background: "transparent",
+                                            color: "white",
+                                            fontWeight: 600,
+                                            cursor: "pointer",
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {err && (
+                        <div style={{ color: "salmon", marginTop: 16 }}>{err}</div>
+                    )}
                 </div>
             </div>
         </div>
