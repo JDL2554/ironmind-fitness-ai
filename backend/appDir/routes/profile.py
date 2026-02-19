@@ -4,6 +4,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from appDir.core.db import get_conn
 from pydantic import BaseModel, EmailStr
 from psycopg2 import errors
+import bcrypt
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -20,6 +21,11 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 class ProfileUpdate(BaseModel):
     email: EmailStr | None = None
     name: str | None = None
+
+class PasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str
+    confirm_password: str
 
 @router.post("/photo")
 async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
@@ -136,5 +142,58 @@ def update_profile(user_id: int, payload: ProfileUpdate):
     except errors.UniqueViolation:
         conn.rollback()
         raise HTTPException(status_code=400, detail="Email already in use.")
+    finally:
+        conn.close()
+
+
+@router.patch("/{user_id}/password")
+def update_password(user_id: int, payload: PasswordUpdate):
+    # basic validation
+    old_pw = (payload.old_password or "").strip()
+    new_pw = (payload.new_password or "").strip()
+    conf_pw = (payload.confirm_password or "").strip()
+
+    if not old_pw or not new_pw or not conf_pw:
+        raise HTTPException(status_code=400, detail="Please fill in all password fields.")
+    if new_pw != conf_pw:
+        raise HTTPException(status_code=400, detail="New passwords do not match.")
+    if len(new_pw) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
+    if new_pw == old_pw:
+        raise HTTPException(status_code=400, detail="New password must be different from old password.")
+
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+
+        # Fetch current hash
+        cur.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        # row can be dict (RealDictCursor) OR tuple (default cursor)
+        stored_hash = row["password_hash"] if isinstance(row, dict) else row[0]
+        if not stored_hash:
+            raise HTTPException(status_code=400, detail="Account has no password set.")
+
+        # Verify old password
+        try:
+            ok = bcrypt.checkpw(old_pw.encode("utf-8"), stored_hash.encode("utf-8"))
+        except ValueError:
+            # this happens when DB contains a non-bcrypt string
+            raise HTTPException(status_code=500, detail="Server password data is invalid.")
+
+        if not ok:
+            raise HTTPException(status_code=401, detail="Old password is incorrect.")
+
+        # Hash new password + update
+        new_hash = bcrypt.hashpw(new_pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, user_id))
+        conn.commit()
+
+        return {"ok": True}
+
     finally:
         conn.close()
