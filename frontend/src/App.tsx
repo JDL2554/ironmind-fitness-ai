@@ -9,6 +9,7 @@ import Profile from "./pages/Profile";
 import Workout from "./pages/Workout";
 import Progress from "./pages/Progress";
 import Settings from "./pages/Settings";
+import ResetPassword from "./pages/ResetPassword";
 
 import "./App.css";
 
@@ -209,6 +210,10 @@ function App() {
                     <Route
                         path="/signup"
                         element={<AuthContainer onAuthenticated={handleAuthenticated} />}
+                    />
+                    <Route
+                        path="/reset-password"
+                        element={<ResetPassword />}
                     />
                     <Route path="*" element={<Navigate to="/login" replace />} />
                 </>
