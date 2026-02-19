@@ -30,6 +30,7 @@ interface User {
 
     created_at?: string | null;
     friend_code?: string;
+    session_length_minutes?: number;
 }
 
 const loadingSteps = [

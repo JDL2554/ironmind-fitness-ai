@@ -19,6 +19,7 @@ export type SignupPayload = {
     workoutVolume: string;
     goals: string[];
     equipment: string;
+    session_length_minutes: number;
 };
 
 export async function loginApi(email: string, password: string): Promise<User> {

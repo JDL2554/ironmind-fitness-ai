@@ -6,6 +6,18 @@ export type ProfilePatch = Partial<{
     currentPassword: string;
 }>;
 
+export type StatsUpdatePayload = {
+    age?: number;
+    height?: string;
+    weight?: number;
+    experienceLevel?: string;
+    workoutVolume?: string;
+    equipment?: string;
+    goals?: string[];
+
+    session_length_minutes?: number;
+};
+
 export async function uploadProfilePhoto(userId: number, file: File) {
     const form = new FormData();
     form.append("file", file);
@@ -49,6 +61,7 @@ export async function getProfile(userId: number) {
         equipment?: string;
 
         created_at?: string | null;
+        session_time_minutes?: number;
     }>;
 }
 
@@ -86,15 +99,7 @@ export async function changePassword(userId: number, oldPassword: string, newPas
 
 export async function updateUserStats(
     userId: number,
-    patch: {
-        age?: number;
-        height?: string;
-        weight?: number;
-        experienceLevel?: string;
-        workoutVolume?: string;
-        goals?: string[];
-        equipment?: string;
-    }
+    payload: StatsUpdatePayload
 ) {
     const res = await fetch(`${API_BASE}/profile/user_stats/${userId}`, {
         method: "PATCH",
@@ -102,7 +107,7 @@ export async function updateUserStats(
             "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(patch),
+        body: JSON.stringify(payload),
     });
 
     if (!res.ok) {

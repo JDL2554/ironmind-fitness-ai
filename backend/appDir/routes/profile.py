@@ -41,6 +41,8 @@ class UserStatsUpdate(BaseModel):
     goals: list[str] | None = None
     equipment: str | None = None
 
+    session_length_minutes: int | None = None
+
 @router.post("/photo")
 async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
     if file.content_type not in ALLOWED_TYPES:
@@ -267,6 +269,13 @@ def update_user_stats(user_id: int, payload: UserStatsUpdate):
             updates.append("equipment = %s")
             params.append(payload.equipment.strip())
 
+        if payload.session_length_minutes is not None:
+            v = payload.session_length_minutes
+            if v < 10 or v > 240:
+                raise HTTPException(status_code=400, detail="Session length must be between 10 and 240 minutes.")
+            updates.append("session_length_minutes = %s")
+            params.append(v)
+
         if not updates:
             raise HTTPException(status_code=400, detail="No fields provided.")
 
@@ -288,7 +297,7 @@ def update_user_stats(user_id: int, payload: UserStatsUpdate):
                 id,
                 age, height, weight,
                 experience_level, workout_volume, goals, equipment,
-                created_at
+                created_at, session_length_minutes
             FROM users
             WHERE id = %s
             """,
@@ -306,6 +315,7 @@ def update_user_stats(user_id: int, payload: UserStatsUpdate):
             "goals": row["goals"],
             "equipment": row["equipment"],
             "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+            "session_length_minutes": row["session_length_minutes"],
         }
 
     finally:
