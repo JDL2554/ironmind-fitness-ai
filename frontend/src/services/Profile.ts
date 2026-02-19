@@ -45,3 +45,15 @@ export async function updateProfile(userId: number, patch: Partial<Pick<User, "e
 
     return data as User; // expects {id,email,name,profile_image_url}
 }
+
+export async function changePassword(userId: number, oldPassword: string, newPassword: string, confirmPassword: string) {
+    const res = await fetch(`${API_BASE}/profile/${userId}/password`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword, confirm_password: confirmPassword }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.detail || "Password update failed");
+    return data as { message: string };
+}

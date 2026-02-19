@@ -87,22 +87,3 @@ export async function emailExistsApi(email: string): Promise<boolean> {
 
     return !!data?.exists;
 }
-
-export async function uploadProfilePhoto(userId: number, file: File) {
-    const form = new FormData();
-    form.append("file", file);
-
-    // adjust this path to whatever your backend upload route actually is
-    const res = await fetch(`${API_BASE}/profile/photo?user_id=${userId}`, {
-        method: "POST",
-        body: form,
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-        throw new Error(data?.detail || "Upload failed");
-    }
-
-    return data as { profile_image_url: string };
-}

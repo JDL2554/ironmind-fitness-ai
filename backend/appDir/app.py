@@ -17,6 +17,7 @@ from appDir.routes.profile import router as profile_router
 
 
 
+
 app = FastAPI(title="IronMind API")
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
