@@ -369,6 +369,24 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             </div>
 
             <div className="form-group">
+                <label htmlFor="equipment">Equipment Access</label>
+                <select
+                    id="equipment"
+                    name="equipment"
+                    value={formData.equipment}
+                    onChange={handleInputChange}
+                    className="form-input"
+                    disabled={loading}
+                >
+                    <option value="gym">🏋️ Gym Access</option>
+                    <option value="home_full">🏠 Home Gym (Full)</option>
+                    <option value="home_basic">🏠 Home Gym (Basic)</option>
+                    <option value="bodyweight">🤸 Bodyweight Only</option>
+                    <option value="minimal">🎒 Minimal Equipment</option>
+                </select>
+            </div>
+
+            <div className="form-group">
                 <label>Fitness Goals (Select all that apply)</label>
                 <div className="goals-grid">
                     {goalOptions.map((goal) => (

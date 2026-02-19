@@ -409,6 +409,11 @@
     box-sizing: border-box;
 }
 
+select.form-input option {
+    background-color: #1a1a2e;
+    color: white;
+}
+
 .form-input::placeholder {
     color: rgba(255, 255, 255, 0.5);
 }
