@@ -7,6 +7,7 @@ from psycopg2 import errors
 import bcrypt
 import json
 from typing import Optional
+from pathlib import Path
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -17,8 +18,8 @@ ALLOWED_TYPES = {
 }
 MAX_BYTES = 5 * 1024 * 1024  # 5MB
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 class ProfileUpdate(BaseModel):
     email: EmailStr | None = None
@@ -60,41 +61,36 @@ async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
 
     ext = ALLOWED_TYPES[file.content_type]
     filename = f"user_{user_id}_{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-
-    with open(filepath, "wb") as f:
-        f.write(data)
+    filepath = UPLOAD_DIR / filename
+    filepath.write_bytes(data)
 
     public_url = f"/uploads/{filename}"
 
     conn = get_conn()
     cur = conn.cursor()
 
-    # ✅ fetch previous image (dict row)
-    cur.execute(
-        "SELECT profile_image_url FROM users WHERE id = %s",
-        (user_id,),
-    )
-    old = cur.fetchone()
-    old_url = old.get("profile_image_url") if old else None
+    try:
+        # 1) fetch previous url
+        cur.execute("SELECT profile_image_url FROM users WHERE id = %s", (user_id,))
+        old = cur.fetchone()
 
-    # ✅ update to new image
-    cur.execute(
-        "UPDATE users SET profile_image_url = %s WHERE id = %s",
-        (public_url, user_id),
-    )
-    conn.commit()
-    conn.close()
+        # ✅ tuple vs dict safe
+        old_url = None
+        if old:
+            old_url = old["profile_image_url"] if isinstance(old, dict) else old[0]
 
-    # ✅ safely delete previous image
-    if old_url and old_url.startswith("/uploads/"):
-        old_name = old_url.replace("/uploads/", "", 1)
-        old_path = os.path.join(UPLOAD_DIR, old_name)
-        if os.path.isfile(old_path):
-            try:
-                os.remove(old_path)
-            except OSError:
-                pass
+        # 2) update db to new url
+        cur.execute(
+            "UPDATE users SET profile_image_url = %s WHERE id = %s",
+            (public_url, user_id),
+        )
+        conn.commit()
+
+    finally:
+        cur.close()
+        conn.close()
+
+    safe_delete_upload(old_url)
 
     return {"profile_image_url": public_url}
 
@@ -334,26 +330,24 @@ def safe_delete_upload(profile_image_url: str | None) -> None:
     if not raw:
         return
 
-    # Example raw: "/static/uploads/user_1_x.jpg" -> want "user_1_x.jpg"
-    # Example raw: "user_1_x.jpg" -> keep as-is
-    filename = raw.split("/")[-1]
+    filename = raw.split("?")[0].split("#")[0].split("/")[-1]
 
     # Basic guard: no weird paths
     if ".." in filename or filename.startswith(".") or "/" in filename or "\\" in filename:
         return
 
-    file_path = (UPLOAD_DIR / filename).resolve()
+    base = UPLOAD_DIR.resolve()
+    file_path = (base / filename).resolve()
 
-    # Ensure file is actually inside uploads directory (prevents path traversal)
-    if UPLOAD_DIR not in file_path.parents:
+    print("DELETE TRY:", file_path, "exists:", file_path.exists(), "raw:", profile_image_url)
+
+    if base not in file_path.parents:
         return
 
-    # Don't crash if file doesn't exist
     try:
         if file_path.exists() and file_path.is_file():
             file_path.unlink()
     except Exception:
-        # optional: log this, but don't block deletion
         pass
 
 
