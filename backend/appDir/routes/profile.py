@@ -7,6 +7,7 @@ from psycopg2 import errors
 import bcrypt
 import json
 from typing import Optional
+from pathlib import Path
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -17,8 +18,8 @@ ALLOWED_TYPES = {
 }
 MAX_BYTES = 5 * 1024 * 1024  # 5MB
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "uploads"))
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 class ProfileUpdate(BaseModel):
     email: EmailStr | None = None
@@ -41,6 +42,8 @@ class UserStatsUpdate(BaseModel):
     goals: list[str] | None = None
     equipment: str | None = None
 
+    session_length_minutes: int | None = None
+
 @router.post("/photo")
 async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
     if file.content_type not in ALLOWED_TYPES:
@@ -58,41 +61,36 @@ async def upload_profile_photo(user_id: int, file: UploadFile = File(...)):
 
     ext = ALLOWED_TYPES[file.content_type]
     filename = f"user_{user_id}_{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-
-    with open(filepath, "wb") as f:
-        f.write(data)
+    filepath = UPLOAD_DIR / filename
+    filepath.write_bytes(data)
 
     public_url = f"/uploads/{filename}"
 
     conn = get_conn()
     cur = conn.cursor()
 
-    # ✅ fetch previous image (dict row)
-    cur.execute(
-        "SELECT profile_image_url FROM users WHERE id = %s",
-        (user_id,),
-    )
-    old = cur.fetchone()
-    old_url = old.get("profile_image_url") if old else None
+    try:
+        # 1) fetch previous url
+        cur.execute("SELECT profile_image_url FROM users WHERE id = %s", (user_id,))
+        old = cur.fetchone()
 
-    # ✅ update to new image
-    cur.execute(
-        "UPDATE users SET profile_image_url = %s WHERE id = %s",
-        (public_url, user_id),
-    )
-    conn.commit()
-    conn.close()
+        # ✅ tuple vs dict safe
+        old_url = None
+        if old:
+            old_url = old["profile_image_url"] if isinstance(old, dict) else old[0]
 
-    # ✅ safely delete previous image
-    if old_url and old_url.startswith("/uploads/"):
-        old_name = old_url.replace("/uploads/", "", 1)
-        old_path = os.path.join(UPLOAD_DIR, old_name)
-        if os.path.isfile(old_path):
-            try:
-                os.remove(old_path)
-            except OSError:
-                pass
+        # 2) update db to new url
+        cur.execute(
+            "UPDATE users SET profile_image_url = %s WHERE id = %s",
+            (public_url, user_id),
+        )
+        conn.commit()
+
+    finally:
+        cur.close()
+        conn.close()
+
+    safe_delete_upload(old_url)
 
     return {"profile_image_url": public_url}
 
@@ -267,6 +265,13 @@ def update_user_stats(user_id: int, payload: UserStatsUpdate):
             updates.append("equipment = %s")
             params.append(payload.equipment.strip())
 
+        if payload.session_length_minutes is not None:
+            v = payload.session_length_minutes
+            if v < 10 or v > 240:
+                raise HTTPException(status_code=400, detail="Session length must be between 10 and 240 minutes.")
+            updates.append("session_length_minutes = %s")
+            params.append(v)
+
         if not updates:
             raise HTTPException(status_code=400, detail="No fields provided.")
 
@@ -288,7 +293,7 @@ def update_user_stats(user_id: int, payload: UserStatsUpdate):
                 id,
                 age, height, weight,
                 experience_level, workout_volume, goals, equipment,
-                created_at
+                created_at, session_length_minutes
             FROM users
             WHERE id = %s
             """,
@@ -306,7 +311,68 @@ def update_user_stats(user_id: int, payload: UserStatsUpdate):
             "goals": row["goals"],
             "equipment": row["equipment"],
             "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
+            "session_length_minutes": row["session_length_minutes"],
         }
+
+    finally:
+        cur.close()
+        conn.close()
+
+def safe_delete_upload(profile_image_url: str | None) -> None:
+    """
+    Deletes a user's uploaded profile image if it lives under UPLOAD_DIR.
+    Does nothing if empty, missing, or not under UPLOAD_DIR.
+    """
+    if not profile_image_url:
+        return
+
+    raw = profile_image_url.strip()
+    if not raw:
+        return
+
+    filename = raw.split("?")[0].split("#")[0].split("/")[-1]
+
+    # Basic guard: no weird paths
+    if ".." in filename or filename.startswith(".") or "/" in filename or "\\" in filename:
+        return
+
+    base = UPLOAD_DIR.resolve()
+    file_path = (base / filename).resolve()
+
+    print("DELETE TRY:", file_path, "exists:", file_path.exists(), "raw:", profile_image_url)
+
+    if base not in file_path.parents:
+        return
+
+    try:
+        if file_path.exists() and file_path.is_file():
+            file_path.unlink()
+    except Exception:
+        pass
+
+
+@router.delete("/delete/{user_id}")
+def delete_user(user_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    try:
+        # 1) fetch image url first
+        cur.execute("SELECT profile_image_url FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        profile_image_url = row[0] if not isinstance(row, dict) else row.get("profile_image_url")
+
+        # 2) delete db row (may need CASCADE or child deletes first)
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+
+        # 3) delete file after commit (or before—either is fine; I prefer after DB success)
+        safe_delete_upload(profile_image_url)
+
+        return {"ok": True}
 
     finally:
         cur.close()

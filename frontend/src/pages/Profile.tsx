@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { uploadProfilePhoto, updateProfile, changePassword, getProfile, updateUserStats } from "../services/Profile";
+import { uploadProfilePhoto, updateProfile, changePassword, getProfile, updateUserStats, deleteAccount } from "../services/Profile";
 
+type Experience = typeof EXPERIENCE_OPTIONS[number]["value"];
+type WorkoutVolume = typeof WORKOUT_VOLUME_OPTIONS[number]["value"];
+type Equipment = typeof EQUIPMENT_OPTIONS[number]["value"];
 
 interface User {
     id: number;
@@ -19,12 +22,24 @@ interface User {
     profile_image_url?: string | null;
     created_at?: string | null;
     friend_code?: string;
+    session_length_minutes?: number;
 }
 
 const EXPERIENCE_OPTIONS = [
     { value: "beginner", label: "🌱 Beginner (0-1 years)" },
     { value: "intermediate", label: "💪 Intermediate (1-3 years)" },
     { value: "advanced", label: "🏆 Advanced (3+ years)" },
+] as const;
+
+const SESSION_LENGTH_OPTIONS = [
+    { value: "20", label: "⏱️ 20 minutes" },
+    { value: "30", label: "⏱️ 30 minutes" },
+    { value: "45", label: "⏱️ 45 minutes" },
+    { value: "60", label: "⏱️ 60 minutes" },
+    { value: "75", label: "⏱️ 75 minutes" },
+    { value: "90", label: "⏱️ 90 minutes" },
+    { value: "120", label: "⏱️ 120 minutes" },
+    { value: "150", label: "⏱️ 150 minutes" },
 ] as const;
 
 const WORKOUT_VOLUME_OPTIONS = [
@@ -52,13 +67,30 @@ const goalOptions = [
 ];
 
 type GoalId = typeof goalOptions[number]["id"];
+const sessionLengthLabelByValue: Map<string, string> = new Map(SESSION_LENGTH_OPTIONS.map(o => [o.value, o.label]));
+
+const experienceLabelByValue: Map<string, string> = new Map(
+    EXPERIENCE_OPTIONS.map(o => [o.value, o.label])
+);
+
+const workoutVolumeLabelByValue: Map<string, string> = new Map(
+    WORKOUT_VOLUME_OPTIONS.map(o => [o.value, o.label])
+);
+
+const equipmentLabelByValue: Map<string, string> = new Map(
+    EQUIPMENT_OPTIONS.map(o => [o.value, o.label])
+);
+
+
 
 export default function Profile({
                                     user,
                                     onUserUpdate,
+                                    onLogout,
                                 }: {
     user: User;
     onUserUpdate: (next: User) => void;
+    onLogout: () => void;
 }) {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -69,6 +101,7 @@ export default function Profile({
     const [emailDraft, setEmailDraft] = useState(user.email);
     const [emailConfirm, setEmailConfirm] = useState("");
     const [emailPw, setEmailPw] = useState("");
+    const [deleting, setDeleting] = useState(false);
 
     // Name edit state
     const [editingName, setEditingName] = useState(false);
@@ -114,6 +147,12 @@ export default function Profile({
     const [pwErr, setPwErr] = useState("");
     const [statsErr, setStatsErr] = useState("");
     const [imageErr, setImageErr] = useState("");
+    const [delErr, setDelErr] = useState("");
+
+    const [sessionLenDraft, setSessionLenDraft] = useState("");
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletingAccount, setDeletingAccount] = useState(false);
 
     useEffect(() => {
         // Reset drafts when parent user changes (login/logout/update)
@@ -142,12 +181,14 @@ export default function Profile({
         setVolDraft(user.workoutVolume ?? "");
         setEquipDraft(user.equipment ?? "");
         setGoalsDraft(user.goals ?? []);
+        setSessionLenDraft(user.session_length_minutes?.toString() ?? "");
 
         setStatsErr("");
         setNameErr("");
         setPwErr("");
         setStatsErr("");
         setImageErr("");
+        setDelErr("");
     }, [user]);
 
     useEffect(() => {
@@ -825,9 +866,27 @@ export default function Profile({
                                     <div>Age: {user.age ?? "—"}</div>
                                     <div>Height: {user.height ?? "—"}</div>
                                     <div>Weight: {user.weight ?? "—"}{user.weight != null ? " lbs" : ""}</div>
-                                    <div>Experience: {user.experienceLevel ?? "—"}</div>
-                                    <div>Workout Frequency: {user.workoutVolume ?? "—"}</div>
-                                    <div>Equipment: {user.equipment ?? "—"}</div>
+                                    <div>
+                                        Experience: {user.experienceLevel
+                                        ? (experienceLabelByValue.get(user.experienceLevel) ?? user.experienceLevel)
+                                        : "—"}
+                                    </div>
+
+                                    <div>
+                                        Workout Frequency: {user.workoutVolume
+                                        ? (workoutVolumeLabelByValue.get(user.workoutVolume) ?? user.workoutVolume)
+                                        : "—"}
+                                    </div>
+                                    <div>
+                                        Equipment: {user.equipment
+                                        ? (equipmentLabelByValue.get(user.equipment) ?? user.equipment)
+                                        : "—"}
+                                    </div>
+                                    <div>
+                                        Session Length: {user.session_length_minutes
+                                        ? (sessionLengthLabelByValue.get(String(user.session_length_minutes)) ?? user.session_length_minutes)
+                                        : "—"}
+                                    </div>
                                     <div>
                                         Goals: {user.goals?.length
                                         ? user.goals.map(id => goalLabelById.get(id) ?? id).join(", ")
@@ -853,6 +912,7 @@ export default function Profile({
                                             setVolDraft(user.workoutVolume ?? "");
                                             setEquipDraft(user.equipment ?? "");
                                             setGoalsDraft(user.goals ?? []);
+                                            setSessionLenDraft(user.session_length_minutes?.toString() ?? "45");
                                         }}
                                         style={{
                                             ...editBtnStyle,
@@ -883,12 +943,16 @@ export default function Profile({
                                         const weight = weightDraft.trim() ? Number(weightDraft) : undefined;
                                         const f = feetDraft.trim() ? Number(feetDraft) : undefined;
                                         const i = inchesDraft.trim() ? Number(inchesDraft) : undefined;
+                                        const session_len = sessionLenDraft.trim() ? Number(sessionLenDraft) : undefined;
 
                                         if (age !== undefined && (!Number.isFinite(age) || age < 13 || age > 120)) {
                                             return setStatsErr("Age must be between 13 and 120.");
                                         }
                                         if (weight !== undefined && (!Number.isFinite(weight) || weight < 50 || weight > 500)) {
                                             return setStatsErr("Weight must be between 50 and 500.");
+                                        }
+                                        if (session_len !== undefined && (!Number.isFinite(session_len) || session_len < 10 || session_len > 240)) {
+                                            return setStatsErr("Preferred session length must be between 10 and 240 minutes.");
                                         }
                                         let height: string | undefined = undefined;
                                         if (f !== undefined || i !== undefined) {
@@ -914,6 +978,7 @@ export default function Profile({
                                             experienceLevel: expDraft || undefined,
                                             workoutVolume: volDraft || undefined,
                                             equipment: equipDraft || undefined,
+                                            session_length_minutes: Number(session_len),
                                             goals: goalsDraft,
                                         });
 
@@ -931,6 +996,9 @@ export default function Profile({
                                 style={{ display: "flex", flexDirection: "column", gap: 10 }}
                             >
                                 {/* Age */}
+                                <label style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+                                    Age
+                                </label>
                                 <input
                                     value={ageDraft}
                                     onChange={(e) => setAgeDraft(e.target.value)}
@@ -939,6 +1007,9 @@ export default function Profile({
                                 />
 
                                 {/* Weight */}
+                                <label style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+                                    Weight
+                                </label>
                                 <input
                                     value={weightDraft}
                                     onChange={(e) => setWeightDraft(e.target.value)}
@@ -947,63 +1018,122 @@ export default function Profile({
                                 />
 
                                 {/* Height split: feet + inches */}
-                                <div style={{ display: "flex", gap: 10 }}>
-                                    <input
-                                        value={feetDraft}
-                                        onChange={(e) => setFeetDraft(e.target.value)}
-                                        placeholder="Feet"
-                                        inputMode="numeric"
-                                        style={{ ...activeInputStyle, width: 155 }}
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    <label style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>Height</label>
+
+                                    <div
+                                        style={{
+                                            height: 1,
+                                            width: 320, // match combined width of feet + inches + gap
+                                            background: "rgba(255,255,255,0.15)",
+                                            marginBottom: 4,
+                                        }}
                                     />
-                                    <input
-                                        value={inchesDraft}
-                                        onChange={(e) => setInchesDraft(e.target.value)}
-                                        placeholder="Inches"
-                                        inputMode="numeric"
-                                        style={{ ...activeInputStyle, width: 155 }}
-                                    />
+
+                                    <div style={{ display: "flex", gap: 10 }}>
+                                        {/* Feet */}
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 6, width: 155 }}>
+                                            <label style={{ fontSize: 11, fontWeight: 600, opacity: 0.85 }}>Feet</label>
+                                            <input
+                                                value={feetDraft}
+                                                onChange={(e) => setFeetDraft(e.target.value)}
+                                                placeholder="Feet"
+                                                inputMode="numeric"
+                                                style={{ ...activeInputStyle, width: "100%" }}
+                                            />
+                                        </div>
+
+                                        {/* Inches */}
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 6, width: 155 }}>
+                                            <label style={{ fontSize: 11, fontWeight: 600, opacity: 0.85 }}>Inches</label>
+                                            <input
+                                                value={inchesDraft}
+                                                onChange={(e) => setInchesDraft(e.target.value)}
+                                                placeholder="Inches"
+                                                inputMode="numeric"
+                                                style={{ ...activeInputStyle, width: "100%" }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Experience dropdown */}
+                                <label style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+                                    Experience
+                                </label>
                                 <select
                                     value={expDraft}
                                     onChange={(e) => setExpDraft(e.target.value)}
                                     style={activeInputStyle}
                                 >
                                     {EXPERIENCE_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value}>
+                                        <option key={o.value} value={o.value} style={{backgroundColor: "#1e1f24",}}>
                                             {o.label}
+
                                         </option>
                                     ))}
                                 </select>
 
                                 {/* Workout frequency dropdown */}
+                                <label style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+                                    Workout Frequency
+                                </label>
                                 <select
                                     value={volDraft}
                                     onChange={(e) => setVolDraft(e.target.value)}
                                     style={activeInputStyle}
                                 >
                                     {WORKOUT_VOLUME_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value}>
+                                        <option key={o.value} value={o.value} style={{backgroundColor: "#1e1f24",}}>
                                             {o.label}
                                         </option>
                                     ))}
                                 </select>
 
                                 {/* Equipment dropdown */}
+                                <label style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+                                    Equipment
+                                </label>
                                 <select
                                     value={equipDraft}
                                     onChange={(e) => setEquipDraft(e.target.value)}
                                     style={activeInputStyle}
                                 >
                                     {EQUIPMENT_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value}>
+                                        <option key={o.value} value={o.value} style={{backgroundColor: "#1e1f24",}}>
                                             {o.label}
                                         </option>
                                     ))}
                                 </select>
 
+                                {/* Session Length dropdown */}
+                                <label style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+                                    Session Length
+                                </label>
+                                <select
+                                    value={sessionLenDraft}
+                                    onChange={(e) => setSessionLenDraft(e.target.value)}
+                                    style={activeInputStyle}
+                                    disabled={savingStats}
+                                >
+                                    <option value="10" style={{backgroundColor: "#1e1f24",}}>10 minutes</option>
+                                    <option value="20" style={{backgroundColor: "#1e1f24",}}>20 minutes</option>
+                                    <option value="30" style={{backgroundColor: "#1e1f24",}}>30 minutes</option>
+                                    <option value="45" style={{backgroundColor: "#1e1f24",}}>45 minutes</option>
+                                    <option value="60" style={{backgroundColor: "#1e1f24",}}>60 minutes</option>
+                                    <option value="75" style={{backgroundColor: "#1e1f24",}}>75 minutes</option>
+                                    <option value="90" style={{backgroundColor: "#1e1f24",}}>90 minutes</option>
+                                    <option value="120" style={{backgroundColor: "#1e1f24",}}>120 minutes</option>
+                                    <option value="150" style={{backgroundColor: "#1e1f24",}}>150 minutes</option>
+                                    <option value="180" style={{backgroundColor: "#1e1f24",}}>180 minutes</option>
+                                    <option value="210" style={{backgroundColor: "#1e1f24",}}>210 minutes</option>
+                                    <option value="240" style={{backgroundColor: "#1e1f24",}}>240 minutes</option>
+                                </select>
+
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                    <label style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>
+                                        Goals
+                                    </label>
                                     {goalOptions.map((g) => {
                                         const active = goalsDraft.includes(g.id);
                                         return (
@@ -1059,6 +1189,7 @@ export default function Profile({
                                             setVolDraft(user.workoutVolume ?? "");
                                             setEquipDraft(user.equipment ?? "");
                                             setGoalsDraft(user.goals ?? []);
+                                            setSessionLenDraft(user.session_length_minutes?.toString() ?? "");
 
                                             if (user.height) {
                                                 const match = user.height.match(/^(\d+)'(\d{1,2})"$/);
@@ -1085,6 +1216,43 @@ export default function Profile({
                         )}
                     </div>
 
+                    <div style={{ marginTop: 34 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.9 }}>
+                            Danger Zone
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDelErr("");
+                                setShowDeleteModal(true);
+                            }}
+                            style={{
+                                marginTop: 15,
+                                padding: "10px 14px",
+                                borderRadius: 12,
+                                border: "1px solid rgba(239,68,68,0.45)",
+                                background: "rgba(239,68,68,0.16)",
+                                color: "white",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                width: "fit-content",
+                            }}
+                        >
+                            Delete account
+                        </button>
+
+                        <div style={{ marginTop: 8, fontSize: 13, opacity: 0.7, maxWidth: 420 }}>
+                            This will permanently remove your account and all associated data.
+                        </div>
+
+                        {delErr && (
+                            <div style={{ color: "salmon", fontWeight: 700, marginTop: 6 }}>
+                                {delErr}
+                            </div>
+                        )}
+                    </div>
+
                     {formattedCreatedAt && (
                         <div
                             style={{
@@ -1100,6 +1268,151 @@ export default function Profile({
 
                 </div>
             </div>
+            {showDeleteModal && (
+                <div
+                    onClick={() => !deletingAccount && setShowDeleteModal(false)}
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.55)",
+                        display: "grid",
+                        placeItems: "center",
+                        zIndex: 9999,
+                        padding: 16,
+                    }}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            width: "min(520px, 100%)",
+                            borderRadius: 18,
+                            border: "1px solid rgba(255,255,255,0.15)",
+                            background: "rgba(20,22,28,0.92)",
+                            backdropFilter: "blur(10px)",
+                            boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+                            padding: 18,
+                        }}
+                    >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div
+                                    style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 12,
+                                        display: "grid",
+                                        placeItems: "center",
+                                        background: "rgba(239,68,68,0.18)",
+                                        border: "1px solid rgba(239,68,68,0.35)",
+                                        fontSize: 18,
+                                    }}
+                                >
+                                    ⚠️
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 900, fontSize: 16 }}>Delete your account?</div>
+                                    <div style={{ opacity: 0.75, fontSize: 13, marginTop: 2 }}>
+                                        This permanently removes your account and profile photo. This cannot be undone.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => !deletingAccount && setShowDeleteModal(false)}
+                                style={{
+                                    border: "none",
+                                    background: "transparent",
+                                    color: "rgba(255,255,255,0.75)",
+                                    cursor: deletingAccount ? "not-allowed" : "pointer",
+                                    fontSize: 18,
+                                    padding: 6,
+                                }}
+                                aria-label="Close"
+                                title="Close"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div style={{ marginTop: 14, padding: "12px 12px", borderRadius: 14, background: "rgba(255,255,255,0.05)" }}>
+                            <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.5 }}>
+                                If you’re just trying to start over, you might prefer logging out and creating a new account.
+                            </div>
+                        </div>
+
+                        {delErr && (
+                            <div style={{ marginTop: 12, color: "salmon", fontWeight: 700 }}>
+                                {delErr}
+                            </div>
+                        )}
+
+                        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
+                            <button
+                                type="button"
+                                disabled={deletingAccount}
+                                onClick={() => setShowDeleteModal(false)}
+                                style={{
+                                    padding: "10px 14px",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(255,255,255,0.18)",
+                                    background: "transparent",
+                                    color: "white",
+                                    fontWeight: 700,
+                                    cursor: deletingAccount ? "not-allowed" : "pointer",
+                                    opacity: deletingAccount ? 0.65 : 1,
+                                }}
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="button"
+                                disabled={deletingAccount}
+                                onClick={async () => {
+                                    if (deletingAccount) return;
+
+                                    setDelErr("");
+                                    setDeletingAccount(true);
+                                    try {
+
+                                        await deleteAccount(user.id);
+
+                                        setShowDeleteModal(false);
+                                        onLogout();
+                                    } catch (e: any) {
+                                        setDelErr(e?.message || "Delete failed.");
+                                    } finally {
+                                        setDeletingAccount(false);
+                                    }
+                                }}
+                                style={{
+                                    padding: "10px 14px",
+                                    borderRadius: 12,
+                                    border: "1px solid rgba(239,68,68,0.45)",
+                                    background: "rgba(239,68,68,0.20)",
+                                    color: "white",
+                                    fontWeight: 900,
+                                    cursor: deletingAccount ? "not-allowed" : "pointer",
+                                    opacity: deletingAccount ? 0.7 : 1,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 10,
+                                }}
+                            >
+                                {deletingAccount ? (
+                                    <>
+                                        <span style={spinnerStyle} />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    "Yes, delete my account"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

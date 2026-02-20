@@ -30,6 +30,7 @@ interface User {
 
     created_at?: string | null;
     friend_code?: string;
+    session_length_minutes?: number;
 }
 
 const loadingSteps = [
@@ -238,7 +239,7 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/workout" element={<Workout />} />
                     <Route path="/progress" element={<Progress />} />
-                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} />} />
+                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>

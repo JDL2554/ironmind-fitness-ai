@@ -22,6 +22,7 @@ type FormState = {
     workoutVolume: "1-2" | "3-4" | "5-6" | "7";
     goals: string[];
     equipment: "gym" | "home_full" | "home_basic" | "bodyweight" | "minimal";
+    session_length_minutes: "10" | "20" | "30" | "45" | "60" | "75" | "90" | "120" | "150" | "180" | "210" | "240";
 };
 
 const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
@@ -38,6 +39,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
         workoutVolume: "3-4",
         goals: [],
         equipment: "gym",
+        session_length_minutes: "60",
     });
 
     const [loading, setLoading] = useState(false);
@@ -100,6 +102,9 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
             }
             case 3: {
                 if (formData.goals.length === 0) return "Please select at least one fitness goal";
+
+                const s = Number(formData.session_length_minutes);
+                if (!Number.isFinite(s) || s < 10 || s > 300) return "Please choose a valid session length";
                 break;
             }
         }
@@ -154,6 +159,8 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                 workoutVolume: formData.workoutVolume,
                 goals: formData.goals,
                 equipment: formData.equipment,
+
+                session_length_minutes: Number(formData.session_length_minutes),
             };
 
             // ✅ backend returns { id, email, name }
@@ -383,6 +390,32 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin }) => {
                     <option value="home_basic">🏠 Home Gym (Basic)</option>
                     <option value="bodyweight">🤸 Bodyweight Only</option>
                     <option value="minimal">🎒 Minimal Equipment</option>
+                </select>
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="session_length_minutes">Preferred Session Length</label>
+                <select
+                    id="session_length_minutes"
+                    name="session_length_minutes"
+                    value={formData.session_length_minutes}
+                    onChange={handleInputChange}
+                    className="form-input"
+                    disabled={loading}
+                >
+                    <option value="10">⏱️ 10 minutes</option>
+                    <option value="20">⏱️ 20 minutes</option>
+                    <option value="30">⏱️ 30 minutes</option>
+                    <option value="45">⏱️ 45 minutes</option>
+                    <option value="60">⏱️ 60 minutes</option>
+                    <option value="75">⏱️ 75 minutes</option>
+                    <option value="90">⏱️ 90 minutes</option>
+                    <option value="120">⏱️ 120 minutes</option>
+                    <option value="150">⏱️ 150 minutes</option>
+                    <option value="180">⏱️ 180 minutes</option>
+                    <option value="210">⏱️ 210 minutes</option>
+                    <option value="240">⏱️ 240 minutes</option>
+
                 </select>
             </div>
 

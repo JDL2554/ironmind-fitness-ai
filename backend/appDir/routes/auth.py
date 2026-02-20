@@ -21,6 +21,7 @@ class SignupRequest(BaseModel):
     workoutVolume: str
     goals: list[str] = Field(min_length=1)
     equipment: str
+    session_length_minutes: int
 
 FRIEND_CODE_LEN = 8
 FRIEND_CODE_ALPHABET = string.ascii_uppercase + string.digits  # no lowercase, easier to share
@@ -48,7 +49,8 @@ def get_profile(user_id: int):
                 goals,
                 equipment,
                 created_at,
-                friend_code
+                friend_code,
+                session_length_minutes
             FROM users
             WHERE id = %s
             """,
@@ -76,6 +78,7 @@ def get_profile(user_id: int):
 
             "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
             "friend_code": row.get("friend_code"),
+            "session_length_minutes": row["session_length_minutes"],
         }
     finally:
         cur.close()
@@ -98,9 +101,9 @@ def signup(payload: SignupRequest):
                     INSERT INTO users (
                         email, name, password_hash, age, height, weight,
                         experience_level, workout_volume, goals, equipment,
-                        friend_code
+                        friend_code, session_length_minutes
                     )
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     RETURNING id, email, name, friend_code;
                 """, (
                     payload.email.lower().strip(),
@@ -114,6 +117,7 @@ def signup(payload: SignupRequest):
                     json.dumps(payload.goals),
                     payload.equipment,
                     friend_code,
+                    payload.session_length_minutes
                 ))
 
                 row = cur.fetchone()
