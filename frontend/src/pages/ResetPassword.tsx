@@ -2,8 +2,6 @@ import React, { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { resetPasswordApi } from "../services/api"
 
-const API_BASE = "http://localhost:8000/api";
-
 export default function ResetPassword() {
     const [params] = useSearchParams();
     const navigate = useNavigate();

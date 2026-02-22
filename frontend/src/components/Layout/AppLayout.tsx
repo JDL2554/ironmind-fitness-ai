@@ -7,7 +7,7 @@ type User = {
     email: string;
     name: string;
     experienceLevel?: string;
-    profile_image_url?: string | null; // ✅ add this
+    profile_image_url?: string | null;
 };
 
 type Props = {
@@ -39,7 +39,6 @@ export default function AppLayout({ user, onLogout }: Props) {
         .map((s) => s[0]?.toUpperCase())
         .join("");
 
-    // ✅ compute avatar url from the *user* prop (inside component)
     const avatarUrl = user.profile_image_url
         ? user.profile_image_url.startsWith("http")
             ? user.profile_image_url
@@ -69,7 +68,6 @@ export default function AppLayout({ user, onLogout }: Props) {
                     <div className="brand-title">IronMind</div>
                 </div>
 
-                {/* TOP NAV: no Settings here */}
                 <nav className="nav">
                     <NavLink
                         to="/dashboard"
@@ -100,7 +98,6 @@ export default function AppLayout({ user, onLogout }: Props) {
                         onClick={() => setOpen((v) => !v)}
                         aria-label="Account menu"
                     >
-                        {/* ✅ show image if exists, otherwise initials */}
                         {avatarUrl ? (
                             <img
                                 src={avatarUrl}

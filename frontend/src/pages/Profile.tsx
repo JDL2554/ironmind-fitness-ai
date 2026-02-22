@@ -1,10 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { uploadProfilePhoto, updateProfile, changePassword, getProfile, updateUserStats, deleteAccount } from "../services/Profile";
 
-type Experience = typeof EXPERIENCE_OPTIONS[number]["value"];
-type WorkoutVolume = typeof WORKOUT_VOLUME_OPTIONS[number]["value"];
-type Equipment = typeof EQUIPMENT_OPTIONS[number]["value"];
-
 interface User {
     id: number;
     email: string;
@@ -32,6 +28,7 @@ const EXPERIENCE_OPTIONS = [
 ] as const;
 
 const SESSION_LENGTH_OPTIONS = [
+    { value: "10", label: "⏱️ 10 minutes" },
     { value: "20", label: "⏱️ 20 minutes" },
     { value: "30", label: "⏱️ 30 minutes" },
     { value: "45", label: "⏱️ 45 minutes" },
@@ -40,6 +37,9 @@ const SESSION_LENGTH_OPTIONS = [
     { value: "90", label: "⏱️ 90 minutes" },
     { value: "120", label: "⏱️ 120 minutes" },
     { value: "150", label: "⏱️ 150 minutes" },
+    { value: "180", label: "⏱️ 180 minutes" },
+    { value: "210", label: "⏱️ 210 minutes" },
+    { value: "240", label: "⏱️ 240 minutes" },
 ] as const;
 
 const WORKOUT_VOLUME_OPTIONS = [
@@ -101,7 +101,6 @@ export default function Profile({
     const [emailDraft, setEmailDraft] = useState(user.email);
     const [emailConfirm, setEmailConfirm] = useState("");
     const [emailPw, setEmailPw] = useState("");
-    const [deleting, setDeleting] = useState(false);
 
     // Name edit state
     const [editingName, setEditingName] = useState(false);
@@ -248,8 +247,8 @@ export default function Profile({
         width: 14,
         height: 14,
         borderRadius: "50%",
-        border: "2px solid rgba(255,255,255,0.35)",
-        borderTopColor: "white",
+        border: "2px solid var(--border)",
+        borderTopColor: "var(--text)",
         animation: "spin 0.9s linear infinite",
     };
 
@@ -311,9 +310,9 @@ export default function Profile({
         width: 320,
         padding: "10px 12px",
         borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.15)",
-        background: "rgba(255,255,255,0.04)",
-        color: "rgba(255,255,255,0.85)",
+        border: "1px solid var(--btn-border)",
+        background: "var(--input-disabled-bg)",
+        color: "var(--input-disabled-text)",
         opacity: 0.75,
         outline: "none",
     };
@@ -322,18 +321,28 @@ export default function Profile({
         width: 320,
         padding: "10px 12px",
         borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.20)",
-        background: "rgba(255,255,255,0.08)",
-        color: "white",
+        border: "1px solid var(--input-border)",
+        background: "var(--input-bg)",
+        color: "var(--input-text)",
         outline: "none",
     };
 
     const editBtnStyle: React.CSSProperties = {
         padding: "10px 14px",
         borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.18)",
-        background: "rgba(255,255,255,0.06)",
-        color: "white",
+        border: "1px solid var(--btn-border)",
+        background: "var(--btn-bg)",
+        color: "var(--btn-text)",
+        fontWeight: 600,
+        cursor: "pointer",
+    };
+
+    const cancelBtnStyle: React.CSSProperties = {
+        padding: "10px 14px",
+        borderRadius: 10,
+        border: "1px solid var(--btn-border)",
+        background: "transparent",
+        color: "var(--btn-text)",
         fontWeight: 600,
         cursor: "pointer",
     };
@@ -343,18 +352,8 @@ export default function Profile({
         borderRadius: 10,
         border: "1px solid rgba(34,197,94,0.35)",
         background: "rgba(34,197,94,0.18)",
-        color: "white",
+        color: "var(--btn-text)",
         fontWeight: 700,
-        cursor: "pointer",
-    };
-
-    const cancelBtnStyle: React.CSSProperties = {
-        padding: "10px 14px",
-        borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.18)",
-        background: "transparent",
-        color: "white",
-        fontWeight: 600,
         cursor: "pointer",
     };
 
@@ -455,9 +454,9 @@ export default function Profile({
                             marginTop: 14,
                             padding: "8px 14px",
                             borderRadius: 999,
-                            border: "1px solid rgba(255,255,255,0.18)",
-                            background: "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.92)",
+                            border: "1px solid var(--btn-border)",
+                            background: "var(--btn-bg)",
+                            color: "var(--btn-text)",
                             fontSize: 14,
                             fontWeight: 600,
                             cursor: uploadingPhoto ? "not-allowed" : "pointer",
@@ -1067,7 +1066,7 @@ export default function Profile({
                                     style={activeInputStyle}
                                 >
                                     {EXPERIENCE_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value} style={{backgroundColor: "#1e1f24",}}>
+                                        <option key={o.value} value={o.value} style={{backgroundColor: "var(--bg)", color: "var(--text)"}}>
                                             {o.label}
 
                                         </option>
@@ -1084,7 +1083,7 @@ export default function Profile({
                                     style={activeInputStyle}
                                 >
                                     {WORKOUT_VOLUME_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value} style={{backgroundColor: "#1e1f24",}}>
+                                        <option key={o.value} value={o.value} style={{backgroundColor: "var(--bg)", color: "var(--text)"}}>
                                             {o.label}
                                         </option>
                                     ))}
@@ -1100,7 +1099,7 @@ export default function Profile({
                                     style={activeInputStyle}
                                 >
                                     {EQUIPMENT_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value} style={{backgroundColor: "#1e1f24",}}>
+                                        <option key={o.value} value={o.value} style={{backgroundColor: "var(--bg)", color: "var(--text)"}}>
                                             {o.label}
                                         </option>
                                     ))}
@@ -1116,18 +1115,11 @@ export default function Profile({
                                     style={activeInputStyle}
                                     disabled={savingStats}
                                 >
-                                    <option value="10" style={{backgroundColor: "#1e1f24",}}>10 minutes</option>
-                                    <option value="20" style={{backgroundColor: "#1e1f24",}}>20 minutes</option>
-                                    <option value="30" style={{backgroundColor: "#1e1f24",}}>30 minutes</option>
-                                    <option value="45" style={{backgroundColor: "#1e1f24",}}>45 minutes</option>
-                                    <option value="60" style={{backgroundColor: "#1e1f24",}}>60 minutes</option>
-                                    <option value="75" style={{backgroundColor: "#1e1f24",}}>75 minutes</option>
-                                    <option value="90" style={{backgroundColor: "#1e1f24",}}>90 minutes</option>
-                                    <option value="120" style={{backgroundColor: "#1e1f24",}}>120 minutes</option>
-                                    <option value="150" style={{backgroundColor: "#1e1f24",}}>150 minutes</option>
-                                    <option value="180" style={{backgroundColor: "#1e1f24",}}>180 minutes</option>
-                                    <option value="210" style={{backgroundColor: "#1e1f24",}}>210 minutes</option>
-                                    <option value="240" style={{backgroundColor: "#1e1f24",}}>240 minutes</option>
+                                    {SESSION_LENGTH_OPTIONS.map((o) => (
+                                        <option key={o.value} value={o.value} style={{backgroundColor: "var(--bg)", color: "var(--text)"}}>
+                                            {o.label}
+                                        </option>
+                                    ))}
                                 </select>
 
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -1144,9 +1136,9 @@ export default function Profile({
                                                 style={{
                                                     padding: "8px 10px",
                                                     borderRadius: 999,
-                                                    border: "1px solid rgba(255,255,255,0.18)",
-                                                    background: active ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.06)",
-                                                    color: "white",
+                                                    border: "1px solid var(--border)",
+                                                    background: active ? "rgba(34,197,94,0.18)" : "var(--surface2)",
+                                                    color: "var(--text)",
                                                     cursor: "pointer",
                                                     fontWeight: 600,
                                                 }}
@@ -1233,7 +1225,7 @@ export default function Profile({
                                 borderRadius: 12,
                                 border: "1px solid rgba(239,68,68,0.45)",
                                 background: "rgba(239,68,68,0.16)",
-                                color: "white",
+                                color: "var(--btn-text)",
                                 fontWeight: 800,
                                 cursor: "pointer",
                                 width: "fit-content",
