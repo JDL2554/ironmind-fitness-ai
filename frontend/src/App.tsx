@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 import AuthContainer from "./components/UserAuthorization/AuthContainer";
@@ -9,6 +9,7 @@ import Profile from "./pages/Profile";
 import Workout from "./pages/Workout";
 import Progress from "./pages/Progress";
 import Settings from "./pages/Settings";
+import ResetPassword from "./pages/ResetPassword";
 
 import "./App.css";
 
@@ -16,9 +17,31 @@ interface User {
     id: number;
     email: string;
     name: string;
-    experienceLevel?: string;
     profile_image_url?: string | null;
+
+    age?: number;
+    height?: string;
+    weight?: number;
+
+    experienceLevel?: string;
+    workoutVolume?: string;
+    goals?: string[];
+    equipment?: string;
+
+    created_at?: string | null;
+    friend_code?: string;
+    session_length_minutes?: number;
 }
+
+const loadingSteps = [
+    "Initializing IronMind...",
+    "Loading exercise database...",
+    "Calibrating AI recommendations...",
+    "Preparing reinforcement learning...",
+    "Optimizing workout algorithms...",
+    "Ready to forge your fitness!",
+];
+
 function App() {
     const navigate = useNavigate();
 
@@ -27,15 +50,6 @@ function App() {
     const [progress, setProgress] = useState(0);
     const [currentStep, setCurrentStep] = useState(0);
     const [user, setUser] = useState<User | null>(null);
-
-    const loadingSteps = [
-        "Initializing IronMind...",
-        "Loading exercise database...",
-        "Calibrating AI recommendations...",
-        "Preparing reinforcement learning...",
-        "Optimizing workout algorithms...",
-        "Ready to forge your fitness!",
-    ];
 
     // -------------------------------------------------
     // Restore user on refresh
@@ -95,10 +109,10 @@ function App() {
         navigate("/login", { replace: true });
     };
 
-    const handleUserUpdate = (nextUser: User) => {
+    const handleUserUpdate = useCallback((nextUser: User) => {
         setUser(nextUser);
         sessionStorage.setItem("ironmind_user", JSON.stringify(nextUser));
-    };
+    }, []);
 
     // -------------------------------------------------
     // Loading screen (UNCHANGED)
@@ -210,6 +224,10 @@ function App() {
                         path="/signup"
                         element={<AuthContainer onAuthenticated={handleAuthenticated} />}
                     />
+                    <Route
+                        path="/reset-password"
+                        element={<ResetPassword />}
+                    />
                     <Route path="*" element={<Navigate to="/login" replace />} />
                 </>
             )}
@@ -221,7 +239,7 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/workout" element={<Workout />} />
                     <Route path="/progress" element={<Progress />} />
-                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} />} />
+                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>

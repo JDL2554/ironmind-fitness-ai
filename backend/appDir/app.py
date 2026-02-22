@@ -14,6 +14,9 @@ from .routes.auth import router as auth_router
 from .modules.login import router as login_router
 #from app.modules.signup import router as signup_router
 from appDir.routes.profile import router as profile_router
+from appDir.routes.password_reset import router as password_reset_router
+
+
 
 
 
@@ -39,6 +42,7 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(login_router, prefix="/api")
 #app.include_router(signup_router, prefix="/api")
 app.include_router(profile_router)
+app.include_router(password_reset_router)
 
 @app.get("/api/health")
 def health():

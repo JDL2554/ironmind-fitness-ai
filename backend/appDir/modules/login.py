@@ -38,9 +38,6 @@ def login(payload: LoginRequest):
 
     stored = password_hash
 
-    print("LOGIN password_hash repr:", repr(stored))
-    print("LOGIN password_hash type:", type(stored))
-
     # normalize to bytes safely
     if isinstance(stored, str):
         stored_bytes = stored.encode("utf-8")

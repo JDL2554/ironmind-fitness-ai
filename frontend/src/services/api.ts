@@ -19,6 +19,7 @@ export type SignupPayload = {
     workoutVolume: string;
     goals: string[];
     equipment: string;
+    session_length_minutes: number;
 };
 
 export async function loginApi(email: string, password: string): Promise<User> {
@@ -88,21 +89,38 @@ export async function emailExistsApi(email: string): Promise<boolean> {
     return !!data?.exists;
 }
 
-export async function uploadProfilePhoto(userId: number, file: File) {
-    const form = new FormData();
-    form.append("file", file);
-
-    // adjust this path to whatever your backend upload route actually is
-    const res = await fetch(`${API_BASE}/profile/photo?user_id=${userId}`, {
+export async function forgotPasswordApi(email: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/auth/forgot-password`, {
         method: "POST",
-        body: form,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+
+    if (!res.ok) {
+        throw new Error("Failed to send reset request.");
+    }
+}
+
+export async function resetPasswordApi(
+    token: string,
+    newPassword: string,
+    confirmPassword: string
+) {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            token,
+            new_password: newPassword,
+            confirm_password: confirmPassword,
+        }),
     });
 
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-        throw new Error(data?.detail || "Upload failed");
+        throw new Error(data?.detail || "Reset failed.");
     }
 
-    return data as { profile_image_url: string };
+    return data as { detail: string };
 }
