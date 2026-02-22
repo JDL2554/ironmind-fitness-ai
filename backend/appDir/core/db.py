@@ -53,5 +53,43 @@ def init_db():
     ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
     """)
 
+    cur.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_type WHERE typname = 'relationship_status'
+        ) THEN
+            CREATE TYPE relationship_status AS ENUM (
+                'pending',
+                'accepted',
+                'blocked'
+            );
+        END IF;
+    END
+    $$;
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS user_relationships (
+        user_low BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_high BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        initiated_by BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status relationship_status NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_low, user_high),
+        CONSTRAINT no_self CHECK (user_low < user_high),
+        CONSTRAINT initiator_in_pair CHECK (
+            initiated_by = user_low OR initiated_by = user_high
+        )
+    );
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_user_relationships_status
+    ON user_relationships(status);
+    """)
+
     conn.commit()
+    cur.close()
     conn.close()

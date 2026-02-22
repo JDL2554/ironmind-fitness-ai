@@ -426,6 +426,17 @@ select.form-input option {
     transform: translateY(-1px);
 }
 
+.copy-icon-btn {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+}
+
 .form-input:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -460,18 +471,6 @@ select.form-input option {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(78, 205, 196, 0.6);
     background: linear-gradient(45deg, #5ed7ce, #52c4dd);
-}
-
-.auth-button.demo {
-    background: rgba(255, 217, 61, 0.1);
-    border: 2px solid rgba(255, 217, 61, 0.3);
-    color: #ffd93d;
-}
-
-.auth-button.demo:hover:not(:disabled) {
-    background: rgba(255, 217, 61, 0.2);
-    border-color: rgba(255, 217, 61, 0.5);
-    transform: translateY(-2px);
 }
 
 /* Button Loading State */

@@ -89,6 +89,13 @@ export default function AppLayout({ user, onLogout }: Props) {
                     >
                         Progress
                     </NavLink>
+
+                    <NavLink
+                        to="/friends"
+                        className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+                    >
+                        Friends
+                    </NavLink>
                 </nav>
 
                 {/* Account bubble */}

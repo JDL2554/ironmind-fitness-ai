@@ -10,6 +10,7 @@ import Workout from "./pages/Workout";
 import Progress from "./pages/Progress";
 import Settings from "./pages/Settings";
 import ResetPassword from "./pages/ResetPassword";
+import Friends from "./pages/Friends";
 
 import "./App.css";
 
@@ -244,6 +245,8 @@ function App() {
                         <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />} />
                         <Route path="/settings" element={<Settings user={user} />} />
                         <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                        <Route path="/friends" element={<Friends user={user} />} />
+
                     </Route>
                 )}
             </Routes>
