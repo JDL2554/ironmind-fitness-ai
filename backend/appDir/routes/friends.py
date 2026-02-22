@@ -24,13 +24,14 @@ def send_friend_request(user_id: int, payload: FriendCodeRequest):
 
     try:
         # Find target user
-        cur.execute("SELECT id FROM users WHERE friend_code = %s", (code,))
+        cur.execute("SELECT id, name FROM users WHERE friend_code = %s", (code,))
         row = cur.fetchone()
 
         if not row:
             raise HTTPException(status_code=404, detail="No user found with that friend code.")
 
-        target_id = row[0] if not isinstance(row, dict) else row["id"]
+        target_id = row["id"]
+        target_name = row["name"]
 
         if target_id == user_id:
             raise HTTPException(status_code=400, detail="You cannot add yourself.")
@@ -66,7 +67,7 @@ def send_friend_request(user_id: int, payload: FriendCodeRequest):
 
         conn.commit()
 
-        return {"ok": True, "message": "Friend request sent."}
+        return {"ok": True, "message": "Friend request sent.", "target_name": target_name}
 
     finally:
         cur.close()

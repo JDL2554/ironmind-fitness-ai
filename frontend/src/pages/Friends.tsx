@@ -126,6 +126,26 @@ export default function Friends({ user }: FriendsProps) {
         };
     }, [tab, user.id]);
 
+    useEffect(() => {
+        if (!codeMsg) return;
+
+        const t = setTimeout(() => {
+            setCodeMsg("");
+        }, 3000);
+
+        return () => clearTimeout(t);
+    }, [codeMsg]);
+
+    useEffect(() => {
+        if (!codeErr) return;
+
+        const t = setTimeout(() => {
+            setCodeErr("");
+        }, 3000);
+
+        return () => clearTimeout(t);
+    }, [codeErr]);
+
     const copyFriendCode = async () => {
         const raw = (myCode || "").trim();
         if (!raw) return;
@@ -156,8 +176,8 @@ export default function Friends({ user }: FriendsProps) {
         setCodeMsg("");
 
         try {
-            await sendFriendRequestByCode(user.id, {friend_code: codeInput});
-            setCodeMsg("Friend request sent!");
+            const res = await sendFriendRequestByCode(user.id, {friend_code: codeInput});
+            setCodeMsg(res.target_name ? `Friend request sent to ${res.target_name}!` : "Friend request sent!");
             setCodeInput("");
         } catch (e: any) {
             setCodeErr(e?.message || "Failed to send request.");
@@ -262,8 +282,9 @@ export default function Friends({ user }: FriendsProps) {
                                         placeholder="Search friends by name or code..."
                                         spellCheck={false}
                                     />
-                                    {/* UI only; wire up later */}
-                                    <div className="search-hint">0 found</div>
+                                    <div className="search-hint">
+                                        {filteredFriends.length} found
+                                    </div>
                                 </div>
 
                                 <button
@@ -356,7 +377,7 @@ export default function Friends({ user }: FriendsProps) {
                                         <div className="card-title">Add by friend code</div>
                                         <div className="card-sub">
                                             Enter a friend code exactly (example:{" "}
-                                            <span className="mono">#JAC-1234</span>).
+                                            <span className="mono">#B7F9ZKQ63E</span>).
                                         </div>
 
                                         <div className="form-row">
@@ -422,9 +443,13 @@ export default function Friends({ user }: FriendsProps) {
                                         </button>
                                     </div>
 
-                                    <div className="panel-light-count muted">
-                                        {filteredPending.length} request{filteredPending.length === 1 ? "" : "s"}
-                                    </div>
+                                    {!pendingLoading && pending.length > 0 && (
+                                        <div className="panel-light-count muted">
+                                            {pendingQuery.trim()
+                                                ? `${filteredPending.length} request${filteredPending.length === 1 ? "" : "s"}`
+                                                : `${pending.length} request${pending.length === 1 ? "" : "s"}`}
+                                        </div>
+                                    )}
 
                                     {pendingErr && (
                                         <div className="form-error" style={{ marginTop: 10 }}>
@@ -442,7 +467,7 @@ export default function Friends({ user }: FriendsProps) {
                                         </div>
                                     ) : (
                                         <div className="mini-list" style={{ marginTop: 16 }}>
-                                            {pending.map((p) => (
+                                            {filteredPending.map((p) => (
                                                 <div className="mini-row" key={p.id}>
                                                     <div className="mini-left">
                                                         <div className="mini-meta">

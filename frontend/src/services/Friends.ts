@@ -72,7 +72,7 @@ export async function sendFriendRequestByCode(
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.detail || "Failed to send friend request.");
-    return data as { ok: boolean; message?: string };
+    return data as { ok: boolean; message?: string; target_name?: string };
 }
 
 export async function getFriendsList(userId: number) {

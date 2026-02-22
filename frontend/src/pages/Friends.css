@@ -20,6 +20,12 @@
     align-items: center;
 }
 
+.form-ok {
+    color: #22c55e;            /* nice green */
+    padding: 8px 10px;
+    font-size: 0.9rem;
+}
+
 .form-error {
     color: #FA8072;            /* salmon text */
     padding: 8px 10px;
