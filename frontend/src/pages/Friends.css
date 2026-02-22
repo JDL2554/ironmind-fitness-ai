@@ -3,6 +3,54 @@
     color: var(--text);
 }
 
+.friends-content .panel + .panel {
+    margin-top: 22px;
+}
+
+/* lighter panel variant */
+.panel.panel--light {
+    background: #2b2f36;        /* slightly lighter than your dark panel */
+    border: 1px solid #3a3f47;
+}
+
+.panel-light-search {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.form-error {
+    color: #FA8072;            /* salmon text */
+    padding: 8px 10px;
+    font-size: 0.9rem;
+}
+
+.panel-light-search .text-input {
+    flex: 1;
+}
+
+.panel-light-count {
+    margin-top: 10px;
+}
+
+/* inner padding */
+.panel-light-inner {
+    padding: 20px;
+}
+
+/* titles */
+.panel-light-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.panel-light-sub {
+    margin-top: 6px;
+    color: #aeb4c0;
+}
+
 .friends-shell {
     max-width: 1100px;
     margin: 0 auto;

@@ -16,6 +16,8 @@ from .modules.login import router as login_router
 from appDir.routes.profile import router as profile_router
 from appDir.routes.password_reset import router as password_reset_router
 from appDir.routes import settings
+from appDir.routes import friends
+from appDir.routes import users
 
 
 
@@ -45,6 +47,8 @@ app.include_router(login_router, prefix="/api")
 app.include_router(profile_router)
 app.include_router(password_reset_router)
 app.include_router(settings.router)
+app.include_router(friends.router)
+app.include_router(users.router)
 
 @app.get("/api/health")
 def health():

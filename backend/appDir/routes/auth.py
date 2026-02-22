@@ -22,7 +22,7 @@ class SignupRequest(BaseModel):
     goals: list[str] = Field(min_length=1)
     equipment: str
     session_length_minutes: int
-    theme: str
+    theme: str = "dark"
 
 FRIEND_CODE_LEN = 8
 FRIEND_CODE_ALPHABET = string.ascii_uppercase + string.digits  # no lowercase, easier to share

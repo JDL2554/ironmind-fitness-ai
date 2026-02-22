@@ -12,6 +12,8 @@ import Settings from "./pages/Settings";
 import ResetPassword from "./pages/ResetPassword";
 import Friends from "./pages/Friends";
 
+import { getProfile } from "./services/Profile";
+
 import "./App.css";
 
 export interface User {
@@ -44,6 +46,8 @@ const loadingSteps = [
     "Ready to forge your fitness!",
 ];
 
+const SESSION_KEY_UID = "ironmind_uid";
+
 function App() {
     const navigate = useNavigate();
 
@@ -51,21 +55,59 @@ function App() {
     const [loadingText, setLoadingText] = useState("Initializing IronMind...");
     const [progress, setProgress] = useState(0);
     const [currentStep, setCurrentStep] = useState(0);
+
+    // We store ONLY the authenticated user id (not the full user object).
+    const [authUserId, setAuthUserId] = useState<number | null>(null);
+
+    // Full hydrated user object fetched from backend.
     const [user, setUser] = useState<User | null>(null);
 
     // -------------------------------------------------
-    // Restore user on refresh
+    // Restore auth user id on refresh (NOT full user)
     // -------------------------------------------------
     useEffect(() => {
-        const saved = sessionStorage.getItem("ironmind_user");
-        if (saved) {
-            try {
-                setUser(JSON.parse(saved));
-            } catch {
-                sessionStorage.removeItem("ironmind_user");
-            }
+        const savedId = sessionStorage.getItem(SESSION_KEY_UID);
+        if (!savedId) return;
+
+        const n = Number(savedId);
+        if (!Number.isFinite(n) || n <= 0) {
+            sessionStorage.removeItem(SESSION_KEY_UID);
+            return;
         }
+        setAuthUserId(n);
     }, []);
+
+    // -------------------------------------------------
+    // Hydrate: fetch full user whenever authUserId exists
+    // -------------------------------------------------
+    useEffect(() => {
+        if (!authUserId) {
+            setUser(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const full = await getProfile(authUserId);
+                if (!cancelled) setUser(full);
+            } catch (e) {
+                console.error("Failed to hydrate user:", e);
+                // If we can't fetch the user, treat as logged out.
+                if (!cancelled) {
+                    sessionStorage.removeItem(SESSION_KEY_UID);
+                    setAuthUserId(null);
+                    setUser(null);
+                    navigate("/login", { replace: true });
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [authUserId, navigate]);
 
     // -------------------------------------------------
     // Loading screen simulation (UNCHANGED)
@@ -100,20 +142,22 @@ function App() {
     // Auth handlers
     // -------------------------------------------------
     const handleAuthenticated = (userData: User) => {
-        setUser(userData);
-        sessionStorage.setItem("ironmind_user", JSON.stringify(userData));
+        // Save only user id, then hydrate full profile via getProfile()
+        setAuthUserId(userData.id);
+        sessionStorage.setItem(SESSION_KEY_UID, String(userData.id));
         navigate("/dashboard", { replace: true });
     };
 
     const handleLogout = () => {
         setUser(null);
-        sessionStorage.removeItem("ironmind_user");
+        setAuthUserId(null);
+        sessionStorage.removeItem(SESSION_KEY_UID);
         navigate("/login", { replace: true });
     };
 
     const handleUserUpdate = useCallback((nextUser: User) => {
+        // Any page (Profile) can update the user and it will persist in memory.
         setUser(nextUser);
-        sessionStorage.setItem("ironmind_user", JSON.stringify(nextUser));
     }, []);
 
     // -------------------------------------------------
@@ -166,10 +210,7 @@ function App() {
                         <div className="loading-section">
                             <div className="progress-container">
                                 <div className="progress-bar">
-                                    <div
-                                        className="progress-fill"
-                                        style={{ width: `${progress}%` }}
-                                    />
+                                    <div className="progress-fill" style={{ width: `${progress}%` }} />
                                     <div className="progress-glow" />
                                 </div>
                                 <div className="progress-text">{Math.round(progress)}%</div>
@@ -180,9 +221,7 @@ function App() {
                             <div className="features-grid">
                                 <div className="feature-item">
                                     <div className="feature-icon">🎯</div>
-                                    <div className="feature-text">
-                                        Personalized Recommendations
-                                    </div>
+                                    <div className="feature-text">Personalized Recommendations</div>
                                 </div>
                                 <div className="feature-item">
                                     <div className="feature-icon">📈</div>
@@ -210,6 +249,16 @@ function App() {
         );
     }
 
+    // Optional: if we have an authUserId but user hasn't hydrated yet, show a minimal placeholder.
+    // (Prevents protected routes flashing while user is still null.)
+    if (authUserId && !user) {
+        return (
+            <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", display: "grid", placeItems: "center" }}>
+                <div style={{ opacity: 0.8 }}>Loading your profile…</div>
+            </div>
+        );
+    }
+
     // -------------------------------------------------
     // Routes
     // -------------------------------------------------
@@ -217,7 +266,7 @@ function App() {
         <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
             <Routes>
                 {/* ----------------- PUBLIC ----------------- */}
-                {!user && (
+                {!authUserId && (
                     <>
                         <Route
                             path="/login"
@@ -227,10 +276,7 @@ function App() {
                             path="/signup"
                             element={<AuthContainer onAuthenticated={handleAuthenticated} />}
                         />
-                        <Route
-                            path="/reset-password"
-                            element={<ResetPassword />}
-                        />
+                        <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="*" element={<Navigate to="/login" replace />} />
                     </>
                 )}
@@ -242,11 +288,15 @@ function App() {
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/workout" element={<Workout />} />
                         <Route path="/progress" element={<Progress />} />
-                        <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />} />
+                        <Route
+                            path="/profile"
+                            element={
+                                <Profile user={user} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />
+                            }
+                        />
                         <Route path="/settings" element={<Settings user={user} />} />
-                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
                         <Route path="/friends" element={<Friends user={user} />} />
-
+                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Route>
                 )}
             </Routes>
