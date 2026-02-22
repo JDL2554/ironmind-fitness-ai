@@ -395,7 +395,7 @@ export default function Profile({
 
                         {user.friend_code && (
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: 600 }}>
+                                  <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
                                     #{user.friend_code}
                                   </span>
 
@@ -409,7 +409,7 @@ export default function Profile({
                                         padding: 0,
                                         margin: 0,
                                         cursor: "pointer",
-                                        color: "rgba(255,255,255,0.55)",
+                                        color: "var(--text)",
                                         display: "grid",
                                         placeItems: "center",
                                     }}
