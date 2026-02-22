@@ -13,7 +13,7 @@ import ResetPassword from "./pages/ResetPassword";
 
 import "./App.css";
 
-interface User {
+export interface User {
     id: number;
     email: string;
     name: string;
@@ -31,6 +31,7 @@ interface User {
     created_at?: string | null;
     friend_code?: string;
     session_length_minutes?: number;
+    theme?: string;
 }
 
 const loadingSteps = [
@@ -212,39 +213,41 @@ function App() {
     // Routes
     // -------------------------------------------------
     return (
-        <Routes>
-            {/* ----------------- PUBLIC ----------------- */}
-            {!user && (
-                <>
-                    <Route
-                        path="/login"
-                        element={<AuthContainer onAuthenticated={handleAuthenticated} />}
-                    />
-                    <Route
-                        path="/signup"
-                        element={<AuthContainer onAuthenticated={handleAuthenticated} />}
-                    />
-                    <Route
-                        path="/reset-password"
-                        element={<ResetPassword />}
-                    />
-                    <Route path="*" element={<Navigate to="/login" replace />} />
-                </>
-            )}
+        <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
+            <Routes>
+                {/* ----------------- PUBLIC ----------------- */}
+                {!user && (
+                    <>
+                        <Route
+                            path="/login"
+                            element={<AuthContainer onAuthenticated={handleAuthenticated} />}
+                        />
+                        <Route
+                            path="/signup"
+                            element={<AuthContainer onAuthenticated={handleAuthenticated} />}
+                        />
+                        <Route
+                            path="/reset-password"
+                            element={<ResetPassword />}
+                        />
+                        <Route path="*" element={<Navigate to="/login" replace />} />
+                    </>
+                )}
 
-            {/* ----------------- PROTECTED ----------------- */}
-            {user && (
-                <Route element={<AppLayout user={user} onLogout={handleLogout} />}>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/workout" element={<Workout />} />
-                    <Route path="/progress" element={<Progress />} />
-                    <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Route>
-            )}
-        </Routes>
+                {/* ----------------- PROTECTED ----------------- */}
+                {user && (
+                    <Route element={<AppLayout user={user} onLogout={handleLogout} />}>
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/workout" element={<Workout />} />
+                        <Route path="/progress" element={<Progress />} />
+                        <Route path="/profile" element={<Profile user={user} onUserUpdate={handleUserUpdate} onLogout={handleLogout} />} />
+                        <Route path="/settings" element={<Settings user={user} />} />
+                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Route>
+                )}
+            </Routes>
+        </div>
     );
 }
 

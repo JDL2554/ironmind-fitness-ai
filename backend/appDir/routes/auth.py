@@ -22,6 +22,7 @@ class SignupRequest(BaseModel):
     goals: list[str] = Field(min_length=1)
     equipment: str
     session_length_minutes: int
+    theme: str
 
 FRIEND_CODE_LEN = 8
 FRIEND_CODE_ALPHABET = string.ascii_uppercase + string.digits  # no lowercase, easier to share
@@ -50,7 +51,8 @@ def get_profile(user_id: int):
                 equipment,
                 created_at,
                 friend_code,
-                session_length_minutes
+                session_length_minutes,
+                theme
             FROM users
             WHERE id = %s
             """,
@@ -79,6 +81,7 @@ def get_profile(user_id: int):
             "created_at": row["created_at"].isoformat() if row.get("created_at") else None,
             "friend_code": row.get("friend_code"),
             "session_length_minutes": row["session_length_minutes"],
+            "theme": row["theme"],
         }
     finally:
         cur.close()
